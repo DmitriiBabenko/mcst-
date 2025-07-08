@@ -16,11 +16,12 @@ void randomFpa32(std::set<std::string>& set, const size_t count) {
     context ctx;
     params p(ctx);
     p.set("random_seed", static_cast<unsigned>(time(nullptr)));
+    const tactic t = with(tactic(ctx, "smt"), p);
     const sort float_ = ctx.fpa_sort(8, 24);
     const expr a = ctx.constant("a", float_);
     const expr b = ctx.constant("b", float_);
     const expr c = ctx.constant("c", float_);
-    solver s(ctx);
+    solver s = t.mk_solver();
     s.add(a + b == c);
     s.set(p);
 
