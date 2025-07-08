@@ -12,7 +12,7 @@ Copyright (c) 2015 Microsoft Corporation
 
 using namespace z3;
 
-void randomFpa32(std::set<std::string>& set, size_t count) {
+void randomFpa32(std::set<std::string>& set, const size_t count) {
     context ctx;
     params p(ctx);
     p.set("random_seed", static_cast<unsigned>(time(nullptr)));
@@ -46,6 +46,6 @@ int main() {
     std::set<std::string> x;
     randomFpa32(x, 100);
     std::cout<<std::endl;
-    const std::vector<std::string> m = std::vector<std::string>(x.begin(), x.end());
+    const auto m = std::vector<std::string>(x.begin(), x.end());
     std::cout<<m[0];
 }
