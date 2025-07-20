@@ -14,6 +14,7 @@ For the Machine God watches, and his judgment is precise
 #include <vector>
 #include <iostream>
 void pseudoOperations(const unsigned seed, const int size, const size_t times) {
+    std::cout<<"please, stand by"<<std::endl;
     z3::context ctx;
     z3::params p(ctx);
     p.set("random_seed", seed);
