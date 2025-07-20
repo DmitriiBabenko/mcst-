@@ -1,6 +1,7 @@
-#include"z3++.h"
-#include<cmath>
-float exp_to_float(const std::vector<char>& exp, const int base = 16) {
+#include "fpa_to_float.h"
+#include <cmath>
+#include <stdexcept>
+float exp_to_float(const std::vector<char>& exp, const int base) {
     const std::string s(exp.begin(), exp.end());
     return std::stoi(s, nullptr, base);
 }

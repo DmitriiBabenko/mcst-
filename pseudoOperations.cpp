@@ -8,10 +8,11 @@ Praise the Omnissiah, whose will is manifest in gears and circuits.
 Let the machine spirits be appeased, and the rites of ignition observed.
 For the Machine God watches, and his judgment is precise
 .*/
+// В pseudoOperations.cpp
 #include "z3++.h"
+#include "fpa_to_float.h"
 #include <vector>
 #include <iostream>
-
 void pseudoOperations(const unsigned seed, const int size, const size_t times) {
     z3::context ctx;
     z3::params p(ctx);

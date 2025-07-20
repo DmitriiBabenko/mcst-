@@ -3,7 +3,7 @@
 #include <string>
 #include <iostream>
 #include <vector>
-#include "fpa_to_float.cpp"
+#include "fpa_to_float.h"
 
 
 void randomFpa32(std::set<std::vector<float>>& set, const size_t count, const unsigned seed) {
@@ -55,4 +55,11 @@ void randomFpa32(std::set<std::vector<float>>& set, const size_t count, const un
 
     std::cout << "Found " << set.size() << " unique models after "
               << attempts << " attempts." << std::endl;
+    for (auto& c: set) {
+        std::cout<<"a: b: c:"<<std::endl;
+        for (auto& floaTp : c) {
+            std::cout<<floaTp<<" ";
+        }
+        std::cout<<std::endl;
+    }
 }

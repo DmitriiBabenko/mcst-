@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 function(download_z3)
-    set(Z3_VERSION "4.13.0")
+    set(Z3_VERSION "4.15.2")
     set(Z3_URL "https://github.com/Z3Prover/z3/releases/download/z3-${Z3_VERSION}/z3-${Z3_VERSION}-x64-win.zip")
     set(Z3_ZIP_FILE "${CMAKE_BINARY_DIR}/z3.zip")
     set(Z3_EXTRACT_DIR "${CMAKE_BINARY_DIR}/z3-extracted")
@@ -70,7 +70,7 @@ endif()
 message(STATUS "Z3 include directory: ${Z3_INCLUDE_DIR}")
 message(STATUS "Z3 library: ${Z3_LIBRARY}")
 
-add_executable(my_app main.cpp)
+add_executable(my_app main.cpp fpa_to_float.cpp pseudoOperations.cpp RandomFpa32.cpp)
 
 target_include_directories(my_app PRIVATE ${Z3_INCLUDE_DIR})
 target_link_libraries(my_app PRIVATE ${Z3_LIBRARY})

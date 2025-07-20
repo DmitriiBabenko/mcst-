@@ -2,10 +2,10 @@
 #include <iostream>
 #include <vector>
 #include <set>
-#include "RandomFpa32.cpp"
-#include "pseudoOperations.cpp"
+#include "RandomFpa32.h"
+
 int main() {
-    std::set<std::vector<float>> a;
-    pseudoOperations(15, 5, 10);
+    std::set<std::vector<float>> set;
+    randomFpa32(set, 5, 10);
     return 0;
 }

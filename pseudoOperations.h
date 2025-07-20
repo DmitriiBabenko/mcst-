@@ -1,8 +1,6 @@
-//
-// Created by димасик on 20.07.2025.
-//
+#ifndef PSEUDO_OPERATIONS_H
+#define PSEUDO_OPERATIONS_H
 
-#ifndef PSEUDOOPERATIONS_H
-#define PSEUDOOPERATIONS_H
+void pseudoOperations(unsigned seed, int size, size_t times);
 
-#endif //PSEUDOOPERATIONS_H
+#endif
