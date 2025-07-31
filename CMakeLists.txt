@@ -15,12 +15,34 @@ set(Z3_LIBRARY "C:/z3/build/Release/libz3.lib")
 
 include_directories(${Z3_INCLUDE_DIR})
 
+add_executable(solve_add
+        solve_add.cpp
+        fpa_to_float.cpp
+        RandomFpa32.cpp
+)
+
+add_executable(solve_random
+        solve_random.cpp
+        fpa_to_float.cpp
+        makeRegs.cpp
+        pseudoOperations.cpp
+        getOperations.cpp
+        addLimits.cpp
+)
+
 add_executable(sequence_generator
         sequence_generator.cpp
         solveRandomApply.cpp
         genSeq.cpp
         Instruction.h
+        fpa_to_float.cpp
 )
+
+target_include_directories(solve_add PRIVATE ${Boost_INCLUDE_DIRS})
+target_link_libraries(solve_add PRIVATE ${Boost_LIBRARIES} ${Z3_LIBRARY})
+
+target_include_directories(solve_random PRIVATE ${Boost_INCLUDE_DIRS})
+target_link_libraries(solve_random PRIVATE ${Boost_LIBRARIES} ${Z3_LIBRARY})
 
 target_include_directories(sequence_generator PRIVATE ${Boost_INCLUDE_DIRS})
 target_link_libraries(sequence_generator PRIVATE ${Boost_LIBRARIES} ${Z3_LIBRARY})
