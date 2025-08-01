@@ -24,10 +24,10 @@ void solveRandomApply(const int seed, const int size, const int regs) {
         z3::expr reg = ctx.constant(name.c_str(), float32);
         registers.push_back(reg);
     }
-
+    z3::solver s(ctx);
+    s.set(p);
     for (auto& c : OpsSeq) {
-        z3::solver s(ctx);
-        s.set(p);
+
         z3::expr val = ctx.constant("someValue", float32);
         s.add(to_expr(ctx, Z3_mk_fpa_is_normal(ctx, val)));
         switch(c.op) {
