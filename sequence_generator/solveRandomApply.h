@@ -4,5 +4,5 @@
 
 #ifndef SOLVERANDOMAPPLY_H
 #define SOLVERANDOMAPPLY_H
-    void solveRandomApply(int seed, int size, int regs);
+    void solveRandomApply(const unsigned seed, const unsigned size, const unsigned regs);
 #endif //SOLVERANDOMAPPLY_H

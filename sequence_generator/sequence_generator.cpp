@@ -8,18 +8,18 @@
 
 namespace po = boost::program_options;
 
-int main(int argc, char* argv[]) {
-    int seed = 0, size = 0, regs = 0;
+int main(const int argc, char* argv[]) {
+    unsigned seed = 0, size = 0, regs = 0;
 
     po::options_description desc("Options");
     desc.add_options()
         ("help,h", "show help")
-        ("seed", po::value<int>(&seed)->required(), "random seed")
-        ("size", po::value<int>(&size)->required(), "execution size")
-        ("regs", po::value<int>(&regs)->required(), "number of registers");
+        ("seed", po::value<unsigned>(&seed)->required(), "random seed")
+        ("size", po::value<unsigned>(&size)->required(), "execution size")
+        ("regs", po::value<unsigned>(&regs)->required(), "number of registers");
 
-    po::variables_map vm;
     try {
+        po::variables_map vm;
         po::store(po::parse_command_line(argc, argv, desc), vm);
         if (vm.count("help")) {
             std::cout << desc << "\n";
