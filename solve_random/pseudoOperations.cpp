@@ -10,7 +10,7 @@ For the Machine God watches, and his judgment is precise
 .*/
 // В pseudoOperations.cpp
 #include "z3++.h"
-#include "fpa_to_float.h"
+#include "../common_add/fpa_to_float.h"
 #include <vector>
 #include <iostream>
 void pseudoOperations(const unsigned seed, const int size, const size_t times) {

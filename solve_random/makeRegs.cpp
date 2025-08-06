@@ -3,7 +3,7 @@
 //
 #include "z3++.h"
 #include <vector>
-#include "../makeRegs.h"
+#include "makeRegs.h"
 
 std::vector<z3::expr> makeRegs(int size, z3::context& ctx, const z3::sort & float32, z3::solver & s) {
     std::vector<z3::expr> regs;
