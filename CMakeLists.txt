@@ -29,9 +29,10 @@ add_executable(sequence_generator
         sequence_generator/genSeq.cpp
         sequence_generator/Instruction.h
         common_add/fpa_to_float.cpp
+        sequence_generator/DependencyAnalysis.cpp
 )
 
-add_compile_options(-Wall -Werror)
+
 target_include_directories(solve_random PRIVATE ${Boost_INCLUDE_DIRS})
 target_link_libraries(solve_random PRIVATE ${Boost_LIBRARIES} ${Z3_LIBRARY})
 
