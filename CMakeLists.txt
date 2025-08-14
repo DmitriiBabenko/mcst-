@@ -31,6 +31,7 @@ add_executable(sequence_generator
         common_add/fpa_to_float.cpp
 )
 
+add_compile_options(-Wall -Werror)
 target_include_directories(solve_random PRIVATE ${Boost_INCLUDE_DIRS})
 target_link_libraries(solve_random PRIVATE ${Boost_LIBRARIES} ${Z3_LIBRARY})
 

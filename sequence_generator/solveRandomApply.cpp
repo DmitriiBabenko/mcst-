@@ -77,7 +77,7 @@ void solveRandomApply(const unsigned seed, const unsigned size, const unsigned r
     }
     std::vector versions(regs, 0);
     if (sor) {
-        std::cout<<"system of restrictions z3:"<<std::endl<<s<<std::endl;;
+        std::cout<<"system of restrictions z3:"<<std::endl<<s<<std::endl;
     }
     if (s.check() == z3::sat) {
         const z3::model m = s.get_model();
@@ -103,12 +103,12 @@ void solveRandomApply(const unsigned seed, const unsigned size, const unsigned r
             std::cout<<std::endl;
         }
         std::cout << "\nfinal values\n";
-        if (intermediateResults) {
-            for (int i = 0; i < registers.size(); ++i) {
-                std::cout<<"reg["<<i<<"] = "<<fpa_to_float(m.eval(registers[i].back()))<<std::endl;
-            }
-        } else {
-            std::cout << "unsat :(" << std::endl;
+
+        for (int i = 0; i < registers.size(); ++i) {
+            std::cout<<"reg["<<i<<"] = "<<fpa_to_float(m.eval(registers[i].back()))<<std::endl;
         }
+
+    } else {
+        std::cout << "unsat :(" << std::endl;
     }
 }

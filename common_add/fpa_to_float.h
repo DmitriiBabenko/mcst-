@@ -4,7 +4,7 @@
 #include <vector>
 #include "z3++.h"
 
-float exp_to_float(const std::vector<char>& exp, int base);
+int exp_to_float(const std::vector<char>& exp, int base);
 float mantissa_to_float(const std::vector<char>& mantissa);
 float fpa_to_float(const z3::expr& val);
 

@@ -1,6 +1,6 @@
 #include "../common_add/fpa_to_float.h"
 #include <cmath>
-float exp_to_float(const std::vector<char>& exp, const int base) {
+int exp_to_float(const std::vector<char>& exp, const int base) {
     const std::string s(exp.begin(), exp.end());
     return std::stoi(s, nullptr, base);
 }
@@ -9,7 +9,7 @@ float mantissa_to_float(const std::vector<char>& mantissa) {
     float result = 1.0f;
     for (size_t i = 0; i < mantissa.size(); ++i) {
         if (mantissa[i] == '1')
-            result += std::pow(2.0f, -static_cast<int>(i + 1));
+            result += static_cast<float>(std::pow(2.0f, -static_cast<int>(i + 1)));
     }
     return result;
 }
