@@ -45,7 +45,7 @@ std::vector<Instruction> genSeq(const unsigned size, const unsigned regs, const 
             initialized_regs.insert(dst_reg);
         } else {
             if (initialized_regs.size() < 2) {
-                returned.emplace_back(static_cast<int> (dst_reg));
+                returned.emplace_back(static_cast<int>(dst_reg));
                 initialized_regs.insert(dst_reg);
             } else {
                 int random_op = op_decision(gen);
@@ -68,7 +68,7 @@ std::vector<Instruction> genSeq(const unsigned size, const unsigned regs, const 
                         src_reg2 = init_regs[init_reg_selector(gen)];
                         attempts++;
                         if (attempts > 100) {
-                            std::cerr << "Warning: Many attempts to avoid forbidden op, using different registers" << std::endl;
+                            std::cerr << "Warning: Many attempts to avoid forbidden op" << std::endl;
                             if (init_regs.size() >= 2) {
                                 src_reg1 = init_regs[0];
                                 src_reg2 = init_regs[1];
