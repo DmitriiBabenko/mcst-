@@ -1,6 +1,3 @@
-//
-// Created by димасик on 31.07.2025.
-//
 #include "solveRandomApply.h"
 #include "Instruction.h"
 #include "genSeq.h"
@@ -14,16 +11,15 @@ struct ComponentSolution {
     bool is_satisfiable = false;
     std::unordered_map<std::string, float> variable_values;
     z3::model model;
-
-    ComponentSolution(z3::context & ctx) : model(ctx) {}
+    explicit ComponentSolution(z3::context & ctx) : model(ctx) {}
 };
 
-float findFinalValue(int reg, const std::unordered_map<std::string, float> & values,
+float findFinalValue(const int reg, const std::unordered_map<std::string, float> & values,
         const std::vector<Instruction> & OpsSeq) {
 
     int max_version = -1;
-    for (size_t i = 0; i < OpsSeq.size(); ++i) {
-        if (OpsSeq[i].dest_reg == reg) {
+    for (const auto & i : OpsSeq) {
+        if (i.dest_reg == reg) {
             max_version++;
         }
     }
@@ -42,7 +38,7 @@ float findFinalValue(int reg, const std::unordered_map<std::string, float> & val
         return it->second;
     }
 
-    return -1;
+    return 0.0f;
 }
 
 ComponentSolution solveComponent(const Component& comp, const std::vector<Instruction> & OpsSeq,
@@ -62,8 +58,8 @@ ComponentSolution solveComponent(const Component& comp, const std::vector<Instru
     for (int reg : comp.input_regs) {
         std::string name = "reg_" + std::to_string(reg) + "_input";
         z3::expr var = ctx.constant(name.c_str(), float32);
-        s.add(z3::to_expr(ctx, Z3_mk_fpa_is_normal(ctx, var)));
-        local_vars.emplace(name, var);
+        s.add(to_expr(ctx, Z3_mk_fpa_is_normal(ctx, var)));
+        local_vars.emplace(name, std::move(var));
     }
 
     std::vector<size_t> sorted_indicies = comp.instruction_indices;
@@ -79,7 +75,9 @@ ComponentSolution solveComponent(const Component& comp, const std::vector<Instru
 
         z3::expr result_var = ctx.constant(result_name.c_str(), float32);
         s.add(to_expr(ctx, Z3_mk_fpa_is_normal(ctx, result_var)));
-        local_vars.emplace(result_name, result_var);
+
+        auto result_pair = local_vars.emplace(result_name, result_var);
+        z3::expr & result_ref = result_pair.first->second;
 
         if (instr.op != Instruction::Ops::INIT) {
             std::string src1_name, src2_name;
@@ -96,22 +94,39 @@ ComponentSolution solveComponent(const Component& comp, const std::vector<Instru
                 src2_name = "reg_" + std::to_string(instr.src_reg2) + "_input";
             }
 
-            z3::expr src1 = local_vars[src1_name];
-            z3::expr src2 = local_vars[src2_name];
+            auto it1 = local_vars.find(src1_name);
+            auto it2 = local_vars.find(src2_name);
+
+            if (it1 == local_vars.end()) {
+                std::cerr << "Error: Variable " << src1_name << " not found for instruction " << idx << std::endl;
+                return solution;
+            }
+
+            if (it2 == local_vars.end()) {
+                std::cerr << "Error: Variable " << src2_name << " not found for instruction " << idx << std::endl;
+                return solution;
+            }
+
+            z3::expr & src1 = it1->second;
+            z3::expr & src2 = it2->second;
 
             switch (instr.op) {
-                case Instruction::Ops::ADD:
-                    s.add(result_var == src1 + src2);
-                    break;
-                case Instruction::Ops::SUB:
-                    s.add(result_var == src1 - src2);
-                    break;
-                case Instruction::Ops::MUL:
-                    s.add(result_var == src1 * src2);
-                    break;
-                case Instruction::Ops::DIV:
-                    s.add(result_var == src1 / src2);
-                    break;
+                    case Instruction::Ops::ADD:
+                        s.add(result_ref == src1 + src2);
+                        break;
+                    case Instruction::Ops::SUB:
+                        s.add(result_ref == src1 - src2);
+                        break;
+                    case Instruction::Ops::MUL:
+                        s.add(result_ref == src1 * src2);
+                        break;
+                    case Instruction::Ops::DIV:
+                        //s.add(src2 != ctx.fpa_val(0.0f, float32));
+                        s.add(result_ref == src1 / src2);
+                        break;
+                    default:
+                        std::cerr << "Error: Unknown operation" << std::endl;
+                        return solution;
             }
         }
     }
@@ -137,7 +152,7 @@ Component createSubComponent(const Component & original, const std::vector<size_
     Component sub;
     sub.instruction_indices = instructions_indices;
 
-    for (size_t idx : instructions_indices) {
+    for (const size_t idx : instructions_indices) {
         const auto & instr = OpsSeq[idx];
         sub.involved_regs.insert(instr.dest_reg);
         if (instr.op != Instruction::Ops::INIT) {
@@ -147,13 +162,13 @@ Component createSubComponent(const Component & original, const std::vector<size_
     }
 
     std::unordered_set<int> written_in_sub;
-    for (size_t idx : instructions_indices) {
+    for (const size_t idx : instructions_indices) {
         written_in_sub.insert(OpsSeq[idx].dest_reg);
     }
 
     for (int reg : sub.involved_regs) {
         if (written_in_sub.find(reg) == written_in_sub.end()) {
-            sub.involved_regs.insert(reg);
+            sub.input_regs.insert(reg);
         }
     }
 
@@ -181,14 +196,12 @@ void diagnozeUnsatComponent(const Component & comp, const std::vector<Instructio
     size_t problematic_start = 0;
 
     while (left < right) {
-        size_t mid = (left + right) / 2;
+        const size_t mid = (left + right) / 2;
 
         std::vector<size_t> prefix(sorted_indices.begin(), sorted_indices.begin() + mid);
         Component test_comp = createSubComponent(comp, prefix, OpsSeq);
 
-        ComponentSolution test_sol = solveComponent(test_comp, OpsSeq, seed, false);
-
-        if (test_sol.is_satisfiable) {
+        if (const ComponentSolution test_sol = solveComponent(test_comp, OpsSeq, seed, false); test_sol.is_satisfiable) {
             left = mid + 1;
             problematic_start = mid;
         } else {
@@ -205,27 +218,37 @@ void diagnozeUnsatComponent(const Component & comp, const std::vector<Instructio
 void presentResults(const std::vector<Component> & components,
                     const std::vector<ComponentSolution> & solutions,
                     const std::vector<Instruction> & OpsSeq,
+                    unsigned regs_count,
                     bool show_intermediate) {
+
+    if (components.size() != solutions.size()) {
+        std::cerr << "Error: Mismatch between components and solutions count" << std::endl;
+        return;
+    }
+
     std::unordered_map<std::string, float> global_values;
 
     for (size_t i = 0; i < components.size(); ++i) {
+        if (i >= solutions.size()) break;
+
         const Component & comp = components[i];
         const ComponentSolution & sol = solutions[i];
 
         std::cout<<"\n=== Component " << i << "===\n";
         std::cout << "Instructions: ";
-        for (size_t idx : comp.instruction_indices) {
-            std:: cout << idx << " ";
+        for (const size_t idx : comp.instruction_indices) {
+            if (idx < OpsSeq.size()) {
+                std:: cout << idx << " ";
+            }
         }
         std::cout << "\nRegisters: ";
-        for (int reg : comp.involved_regs) {
+        for (const int reg : comp.involved_regs) {
             std::cout << reg << " ";
         }
         std::cout << "\n";
 
         if (sol.is_satisfiable) {
             std::cout << "Status: SAT\n";
-
             for (const auto & [var_name, value] : sol.variable_values) {
                 global_values[var_name] = value;
             }
@@ -236,9 +259,13 @@ void presentResults(const std::vector<Component> & components,
 
     std::cout << "\n===Final Results ===\n";
 
-    for (int reg = 0; reg < global_values.size(); ++reg) {
-        float final_value = findFinalValue(reg, global_values, OpsSeq);
-        std::cout << "reg[" << reg << "] = " << final_value << "\n";
+    for (unsigned reg = 0; reg < regs_count; ++reg) {
+        const float final_value = findFinalValue(static_cast<int> (reg), global_values, OpsSeq);
+        if (final_value != 0.0f || !global_values.empty()) {
+            std::cout << "reg[" << reg << "] = " << final_value << "\n";
+        } else {
+            std::cout << "reg[" << reg << "] = <undefined>\n";
+        }
     }
 }
 
@@ -254,13 +281,44 @@ void solveRandomApply(const unsigned seed, const unsigned size, const unsigned r
         }
     };
 
+    std::cout << "Generating sequence with seed=" << seed
+                << ", size=" <<size << ", regs=" << regs << std::endl;
+
     const std::vector<Instruction> OpsSeq = genSeq(size, regs, seed);
 
+    std::cout << "Generated " << OpsSeq.size() << " instructions" << std::endl;
+
+    for (size_t i = 0; i < OpsSeq.size(); ++i) {
+        const auto & instr = OpsSeq[i];
+        std::cout << "Instr " << i << ": dst=" << instr.dest_reg;
+        if (instr.op != Instruction::Ops::INIT) {
+            std::cout << ", src1=" << instr.src_reg1 << ", src2=" << instr.src_reg2;
+        }
+        std::cout << std::endl;
+
+        if (instr.dest_reg < 0 || instr.dest_reg >= static_cast<int>(regs)) {
+            std::cerr << "ERROR: Invalid dest_reg " << instr.dest_reg << std::endl;
+            return;
+        }
+        if (instr.op != Instruction::Ops::INIT) {
+            if (instr.src_reg1 < 0 || instr.src_reg1 >= static_cast<int>(regs) ||
+                instr.src_reg2 < 0 || instr.src_reg2 >= static_cast<int>(regs)) {
+                std::cerr << "ERROR: Invalid src regs " << instr.src_reg1 << ", " << instr.src_reg2 << std::endl;
+                return;
+                }
+        }
+    }
+
     DependencyAnalyzer analyzer;
-    std::vector<Component> components = analyzer.analyze(OpsSeq, regs);
+    const std::vector<Component> components = analyzer.analyze(OpsSeq, regs);
 
     std::cout << "Found " << components.size() << " independent components\n";
 
+    for (size_t i = 0; i < components.size(); ++i) {
+        std::cout << "Component " << i << " has " << components[i].nodes.size()
+                    << " nodes and " << components[i].instruction_indices.size()
+                    << " instructions" << std::endl;
+    }
     if (soi) {
         std::cout<<"sequence of instructions:"<<std::endl;
         for (auto & instr : OpsSeq) {
@@ -286,5 +344,5 @@ void solveRandomApply(const unsigned seed, const unsigned size, const unsigned r
         }
     }
 
-    presentResults(components, solutions, OpsSeq, intermediateResults);
+    presentResults(components, solutions, OpsSeq, regs, intermediateResults);
 }

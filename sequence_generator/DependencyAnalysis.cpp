@@ -1,6 +1,9 @@
 #include "DependencyAnalysis.h"
+#include <iostream>
 
 void DependencyAnalyzer::buildDependencyGraph(const std::vector<Instruction> & ops, unsigned regs) {
+
+    current_versions.clear();
     for (unsigned i = 0; i < regs; ++i) {
         current_versions[i] = 0;
     }
@@ -22,18 +25,30 @@ void DependencyAnalyzer::buildDependencyGraph(const std::vector<Instruction> & o
         version_to_node[key] = current_node;
 
         if(instr.op != Instruction::Ops::INIT) {
-            std::string src1_key = std::to_string(instr.src_reg1) + "_" + std::to_string(current_versions[instr.src_reg1]);
-            auto it1 = version_to_node.find(src1_key);
-            if (it1 != version_to_node.end()) {
-                current_node->dependencies.push_back(it1->second);
-                it1->second->dependents.push_back(current_node);
+            if (current_versions[instr.src_reg1] > 0) {
+                std::string src1_key = std::to_string(instr.src_reg1) + "_" + std::to_string(current_versions[instr.src_reg1]);
+                auto it1 = version_to_node.find(src1_key);
+                if (it1 != version_to_node.end()) {
+                    current_node->dependencies.push_back(it1->second);
+                    it1->second->dependents.push_back(current_node);
+                }
+            } else {
+                std::cerr << "Error: Using uninitialiazed register " << instr.src_reg1
+                            << " in instruction " << i << std::endl;
+                return;
             }
 
-            std::string src2_key = std::to_string(instr.src_reg2) + "_" + std::to_string(current_versions[instr.src_reg2]);
-            auto it2 = version_to_node.find(src2_key);
-            if (it2 != version_to_node.end()) {
-                current_node->dependencies.push_back(it2->second);
-                it2->second->dependents.push_back(current_node);
+            if (current_versions[instr.src_reg2] > 0) {
+                std::string src2_key = std::to_string(instr.src_reg2) + "_" + std::to_string(current_versions[instr.src_reg2]);
+                auto it2 = version_to_node.find(src2_key);
+                if (it2 != version_to_node.end()) {
+                    current_node->dependencies.push_back(it2->second);
+                    it2->second->dependents.push_back(current_node);
+                }
+            } else {
+                std::cerr << "Error: Using uninitialiazed register " << instr.src_reg1
+                            << " in instruction " << i << std::endl;
+                return;
             }
         }
     }
@@ -85,16 +100,22 @@ void DependencyAnalyzer::findComponents() {
     }
 }
 
-void DependencyAnalyzer::classifyRegisters() {
+void DependencyAnalyzer::classifyRegisters(const std::vector<Instruction> & ops) {
     for (auto & comp : components) {
         std::unordered_set<int> written_regs;
         std::unordered_set<int> read_regs;
 
         for(auto * node : comp.nodes) {
             written_regs.insert(node->reg_number);
+        }
 
-            for (auto * dep : node->dependencies) {
-                read_regs.insert(dep->reg_number);
+        for (size_t instr_idx : comp.instruction_indices) {
+            if (instr_idx < ops.size()) {
+                const auto & instr = ops[instr_idx];
+                if (instr.op != Instruction::Ops::INIT) {
+                    read_regs.insert(instr.src_reg1);
+                    read_regs.insert(instr.src_reg2);
+                }
             }
         }
 
@@ -109,6 +130,6 @@ void DependencyAnalyzer::classifyRegisters() {
 std::vector<Component> DependencyAnalyzer::analyze(const std::vector<Instruction>& ops, unsigned regs) {
     buildDependencyGraph(ops, regs);
     findComponents();
-    classifyRegisters();
+    classifyRegisters(ops);
     return components;
 }

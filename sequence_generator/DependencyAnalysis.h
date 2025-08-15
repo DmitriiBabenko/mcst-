@@ -41,5 +41,5 @@ public:
 private:
     void buildDependencyGraph(const std::vector<Instruction> & ops, unsigned regs);
     void findComponents();
-    void classifyRegisters();
+    void classifyRegisters(const std::vector<Instruction> & ops);
 };
