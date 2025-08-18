@@ -10,31 +10,43 @@
 struct ComponentSolution {
     bool is_satisfiable = false;
     std::unordered_map<std::string, float> variable_values;
-    z3::model model;
-    explicit ComponentSolution(z3::context & ctx) : model(ctx) {}
+
+    std::unique_ptr<z3::context> ctx_ptr;
+    std::unique_ptr<z3::model> model_ptr;
+
+    ComponentSolution() :
+        ctx_ptr(std::make_unique<z3::context>()),
+        model_ptr(nullptr) {}
+    void setModel(z3::model && model) {
+        model_ptr = std::make_unique<z3::model>(std::move(model));
+    }
+    z3::context & getContext() const {
+        return *ctx_ptr;
+    }
+    z3::model* getModel() const {
+        return model_ptr.get();
+    }
 };
 
 float findFinalValue(const int reg, const std::unordered_map<std::string, float> & values,
         const std::vector<Instruction> & OpsSeq) {
 
-    int max_version = -1;
-    for (const auto & i : OpsSeq) {
-        if (i.dest_reg == reg) {
+    int max_version = 0;
+    for (const auto & instr : OpsSeq) {
+        if (instr.dest_reg == reg) {
             max_version++;
         }
     }
 
-    if (max_version >= 0) {
-        std::string var_name = "reg_" + std::to_string(reg) + "_" + std::to_string(max_version + 1);
-        auto it = values.find(var_name);
-        if (it != values.end()) {
+    if (max_version > 0) {
+        const std::string var_name = "reg_" + std::to_string(reg) + "_" + std::to_string(max_version);
+        if (const auto it = values.find(var_name); it != values.end()) {
             return it->second;
         }
     }
 
-    std::string input_name = "reg_" + std::to_string(reg) + "_input";
-    auto it = values.find(input_name);
-    if (it != values.end()) {
+    const std::string input_name = "reg_" + std::to_string(reg) + "_input";
+    if (const auto it = values.find(input_name); it != values.end()) {
         return it->second;
     }
 
@@ -42,8 +54,10 @@ float findFinalValue(const int reg, const std::unordered_map<std::string, float>
 }
 
 ComponentSolution solveComponent(const Component& comp, const std::vector<Instruction> & OpsSeq,
-                                unsigned seed, bool show_constraints) {
-    z3::context ctx;
+                                unsigned regs, unsigned seed, bool show_constraints) {
+    ComponentSolution solution;
+    z3::context & ctx = solution.getContext();
+
     z3::params p(ctx);
     p.set("random_seed", seed);
 
@@ -51,64 +65,119 @@ ComponentSolution solveComponent(const Component& comp, const std::vector<Instru
     z3::solver s(ctx);
     s.set(p);
 
-    ComponentSolution solution(ctx);
-
     std::unordered_map<std::string, z3::expr> local_vars;
 
     for (int reg : comp.input_regs) {
         std::string name = "reg_" + std::to_string(reg) + "_input";
         z3::expr var = ctx.constant(name.c_str(), float32);
-        s.add(to_expr(ctx, Z3_mk_fpa_is_normal(ctx, var)));
+
+        s.add(to_expr(ctx,  Z3_mk_fpa_is_normal(ctx, var)));
+
+        z3::expr min_val = ctx.fpa_val(-100.0f);
+        z3::expr max_val = ctx.fpa_val(100.0f);
+        s.add(var >= min_val && var <= max_val);
+
+        z3::expr small_pos = ctx.fpa_val(0.001f);
+        z3::expr small_neg = ctx.fpa_val(-0.001f);
+        s.add(var >= small_pos || var <= small_neg);
+
         local_vars.emplace(name, std::move(var));
     }
 
-    std::vector<size_t> sorted_indicies = comp.instruction_indices;
-    std::sort(sorted_indicies.begin(), sorted_indicies.end());
+    std::unordered_map<int, int> global_versions;
+    for (int i = 0; i < regs; ++i) {
+        global_versions[i] = 0;
+    }
 
-    std::unordered_map<int, int> local_versions;
+    std::vector<std::unordered_map<int, int>> versions_at_instruction(OpsSeq.size());
+    for (size_t global_idx = 0; global_idx < OpsSeq.size(); ++global_idx) {
+        versions_at_instruction[global_idx] = global_versions;
+        const auto & instr = OpsSeq[global_idx];
+        global_versions[instr.dest_reg]++;
+    }
 
-    for (size_t idx : sorted_indicies) {
+    std::vector<size_t> sorted_indices = comp.instruction_indices;
+    std::sort(sorted_indices.begin(), sorted_indices.end());
+
+    std::unordered_set<std::string> needed_vars;
+
+    for (size_t idx : sorted_indices) {
+        if (idx >= OpsSeq.size()) continue;
+
+        const auto & instr = OpsSeq[idx];
+        const auto & versions_before = versions_at_instruction[idx];
+
+        int result_version = versions_before.at(instr.dest_reg) + 1;
+        std::string result_name = "reg_" + std::to_string(instr.dest_reg) + "_" + std::to_string(result_version);
+        needed_vars.insert(result_name);
+
+        if (instr.op != Instruction::Ops::INIT) {
+            int src1_version = versions_before.at(instr.src_reg1);
+            int src2_version = versions_before.at(instr.src_reg2);
+
+            std::string src1_name = (src1_version > 0)
+                ? "reg_" + std::to_string(instr.src_reg1) + "_" + std::to_string(src1_version)
+                : "reg_" + std::to_string(instr.src_reg1) + "_input";
+
+            std::string src2_name = (src2_version > 0)
+                ? "reg_" + std::to_string(instr.src_reg2) + "_" + std::to_string(src2_version)
+                : "reg_" + std::to_string(instr.src_reg2) + "_input";
+
+            needed_vars.insert(src1_name);
+            needed_vars.insert(src2_name);
+        }
+    }
+
+    for (const std::string & var_name : needed_vars) {
+        if (local_vars.find(var_name) == local_vars.end()) {
+            z3::expr var = ctx.constant(var_name.c_str(), float32);
+            s.add(z3::to_expr(ctx, Z3_mk_fpa_is_normal(ctx, var)));
+            local_vars.emplace(var_name, std::move(var));
+        }
+    }
+
+    for (size_t idx : sorted_indices) {
+
         if (idx >= OpsSeq.size()) {
             std::cerr << "Error: Instruction index " << idx << " out of bounds" << std::endl;
             return solution;
         }
 
         const auto & instr = OpsSeq[idx];
+        const auto & versions_before = versions_at_instruction[idx];
 
-        int new_version = ++local_versions[instr.dest_reg];
-        std::string result_name = "reg_" + std::to_string(instr.dest_reg) + "_" + std::to_string(new_version);
+        int result_version = versions_before.at(instr.dest_reg) + 1;
+        std::string result_name = "reg_" + std::to_string(instr.dest_reg) + "_" + std::to_string(result_version);
 
-        z3::expr result_var = ctx.constant(result_name.c_str(), float32);
-        s.add(to_expr(ctx, Z3_mk_fpa_is_normal(ctx, result_var)));
-
-        auto result_pair = local_vars.emplace(result_name, result_var);
-        z3::expr & result_ref = result_pair.first->second;
+        auto result_it = local_vars.find(result_name);
+        if (result_it == local_vars.end()) {
+            std::cerr << "Error: Result variable " << result_name << " not found" << std::endl;
+            return solution;
+        }
+        z3::expr & result_ref = result_it->second;
 
         if (instr.op != Instruction::Ops::INIT) {
-            std::string src1_name, src2_name;
+            int src1_version = versions_before.at(instr.src_reg1);
+            int src2_version = versions_before.at(instr.src_reg2);
 
-            if (local_versions.find(instr.src_reg1) != local_versions.end()) {
-                src1_name = "reg_" + std::to_string(instr.src_reg1) + "_" + std::to_string(local_versions[instr.src_reg1]);
-            } else {
-                src1_name = "reg_" + std::to_string(instr.src_reg1) + "_input";
-            }
+            std::string src1_name = (src1_version > 0)
+                ? "reg_" + std::to_string(instr.src_reg1) + "_" + std::to_string(src1_version)
+                : "reg_" + std::to_string(instr.src_reg1) + "_input";
 
-            if (local_versions.find(instr.src_reg2) != local_versions.end()) {
-                src2_name = "reg_" + std::to_string(instr.src_reg2) + "_" + std::to_string(local_versions[instr.src_reg2]);
-            } else {
-                src2_name = "reg_" + std::to_string(instr.src_reg2) + "_input";
-            }
+            std::string src2_name = (src2_version > 0)
+                ? "reg_" + std::to_string(instr.src_reg2) + "_" + std::to_string(src2_version)
+                : "reg_" + std::to_string(instr.src_reg2) + "_input";
 
             auto it1 = local_vars.find(src1_name);
             auto it2 = local_vars.find(src2_name);
 
             if (it1 == local_vars.end()) {
-                std::cerr << "Error: Variable " << src1_name << " not found for instruction " << idx << std::endl;
+                std::cerr << "Error: Variable " << src1_name << " not foud for instruction " << idx << std::endl;
                 return solution;
             }
 
             if (it2 == local_vars.end()) {
-                std::cerr << "Error: Variable " << src2_name << " not found for instruction " << idx << std::endl;
+                std::cerr << "Error: Variable " << src2_name << " not foud for instruction " << idx << std::endl;
                 return solution;
             }
 
@@ -118,18 +187,19 @@ ComponentSolution solveComponent(const Component& comp, const std::vector<Instru
             switch (instr.op) {
                 case Instruction::Ops::ADD:
                     s.add(result_ref == src1 + src2);
-                    break;
+                break;
                 case Instruction::Ops::SUB:
                     s.add(result_ref == src1 - src2);
-                    break;
+                break;
                 case Instruction::Ops::MUL:
                     s.add(result_ref == src1 * src2);
-                    break;
+                break;
                 case Instruction::Ops::DIV:
-                    s.add(result_ref == src1 / src2);
-                    break;
+                    s.add(src2 != ctx.fpa_val(0.0f));
+                s.add(result_ref == src1 / src2);
+                break;
                 default:
-                    std::cerr << "Error: Unknown operation" << std::endl;
+                    std::cerr << "Error: Unknown operation in instructions " << idx << std::endl;
                     return solution;
             }
         }
@@ -139,17 +209,26 @@ ComponentSolution solveComponent(const Component& comp, const std::vector<Instru
         std::cout << "Component constraints:\n" << s << "\n";
     }
 
-    if (s.check() == z3::sat) {
+    if (z3::check_result result = s.check(); result == z3::sat) {
         solution.is_satisfiable = true;
-        solution.model = s.get_model();
+        solution.setModel(s.get_model());
 
         for (const auto & [name, var] : local_vars) {
-            solution.variable_values[name] = fpa_to_float(solution.model.eval(var));
+            if (solution.getModel()) {
+                solution.variable_values[name] = fpa_to_float(solution.getModel()->eval(var));
+            }
         }
+    } else if (result == z3::unsat) {
+        solution.is_satisfiable = false;
+        std::cout << "Component is UNSAT" << std::endl;
+    } else {
+        solution.is_satisfiable = false;
+        std::cout << "Component solving returned UNKNOWN" << std::endl;
     }
 
     return solution;
 }
+
 
 Component createSubComponent(const Component & original, const std::vector<size_t> & instructions_indices,
                             const std::vector<Instruction> & OpsSeq) {
@@ -183,18 +262,18 @@ Component createSubComponent(const Component & original, const std::vector<size_
     return sub;
 }
 
-void analyzeProblematicInstruction(const Instruction & instr, size_t idx) {
+void analyzeProblematicInstruction(const Instruction & instr, const size_t idx) {
     std::cout << "Problematic instruction " << idx << ": ";
 
     if (instr.op == Instruction::Ops::DIV) {
-        std::cout << "Division operation - potential division by zero\n";
-        std::cout<< "reg[" << instr.dest_reg << "] = reg[" << instr.src_reg1 << "] / reg[" << instr.src_reg2 << "]\n";
-        std::cout << "Suggestion: Check if reg[" << instr.src_reg2 << "] can be zero\n";
+        std::cout << "Division operation - potential division by zero\n"
+        << "reg[" << instr.dest_reg << "] = reg[" << instr.src_reg1 << "] / reg[" << instr.src_reg2 << "]\n"
+        << "Suggestion: Check if reg[" << instr.src_reg2 << "] can be zero\n";
     } else {
         std::cout << "Unexpected UNSAT cause in arithmetic operation\n";
     }
 }
-void diagnozeUnsatComponent(const Component & comp, const std::vector<Instruction> & OpsSeq, unsigned seed) {
+void diagnozeUnsatComponent(const Component & comp, const std::vector<Instruction> & OpsSeq, const unsigned seed, const unsigned regs) {
     std::cout << "Diagnosing UNSAT component with " << comp.instruction_indices.size() << " instructions\n";
 
     std::vector<size_t> sorted_indices = comp.instruction_indices;
@@ -216,7 +295,7 @@ void diagnozeUnsatComponent(const Component & comp, const std::vector<Instructio
 
         Component test_comp = createSubComponent(comp, prefix, OpsSeq);
 
-        if (const ComponentSolution test_sol = solveComponent(test_comp, OpsSeq, seed, false); test_sol.is_satisfiable) {
+        if (const ComponentSolution test_sol = solveComponent(test_comp, OpsSeq, regs, seed, false); test_sol.is_satisfiable) {
             left = mid + 1;
             problematic_start = mid;
         } else {
@@ -237,8 +316,8 @@ void diagnozeUnsatComponent(const Component & comp, const std::vector<Instructio
 void presentResults(const std::vector<Component> & components,
                     const std::vector<ComponentSolution> & solutions,
                     const std::vector<Instruction> & OpsSeq,
-                    unsigned regs_count,
-                    bool show_intermediate) {
+                    const unsigned regs_count,
+                    const bool show_intermediate) {
 
     if (components.size() != solutions.size()) {
         std::cerr << "Error: Mismatch between components and solutions count" << std::endl;
@@ -251,8 +330,8 @@ void presentResults(const std::vector<Component> & components,
         const Component & comp = components[i];
         const ComponentSolution & sol = solutions[i];
 
-        std::cout<<"\n=== Component " << i << "===\n";
-        std::cout << "Instructions: ";
+        std::cout<<"\n=== Component " << i << "===\n"
+        << "Instructions: ";
         for (const size_t idx : comp.instruction_indices) {
             if (idx < OpsSeq.size()) {
                 std:: cout << idx << " ";
@@ -337,8 +416,7 @@ void solveRandomApply(const unsigned seed, const unsigned size, const unsigned r
     }
     if (soi) {
         std::cout<<"sequence of instructions:"<<std::endl;
-        for (size_t i = 0; i < OpsSeq.size(); ++i) {
-            const auto & instr = OpsSeq[i];
+        for (auto instr : OpsSeq) {
             if (instr.op == Instruction::Ops::INIT) {
                 std::cout << "reg[" << instr.dest_reg << "] = random_value"<<std::endl;
             } else {
@@ -354,14 +432,12 @@ void solveRandomApply(const unsigned seed, const unsigned size, const unsigned r
 
     solutions.reserve(components.size());
     for (size_t i = 0; i < components.size(); ++i) {
-        ComponentSolution sol = solveComponent(components[i], OpsSeq, seed + static_cast<unsigned> (i), sor);
-        std::cout<<i<<" ";
+        ComponentSolution sol = solveComponent(components[i], OpsSeq, regs, seed + static_cast<unsigned> (i), sor);
         solutions.push_back(std::move(sol));
-        std::cout << i << "\n";
 
         if (!solutions.back().is_satisfiable) {
             std::cout << "Component " << i << " is UNSAT - analyzing...\n";
-            diagnozeUnsatComponent(components[i], OpsSeq, seed + static_cast<unsigned>(i));
+            diagnozeUnsatComponent(components[i], OpsSeq, seed + static_cast<unsigned>(i), regs);
         }
     }
 

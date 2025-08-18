@@ -27,20 +27,19 @@ std::vector<Instruction> genSeq(const unsigned size, const unsigned regs, const 
     std::uniform_int_distribution op_type(0, 4);
     std::uniform_int_distribution op_decision(0, 3);
 
-    const Instruction::Ops ops[] = {
+    constexpr Instruction::Ops ops[] = {
                                 Instruction::Ops::ADD,
                                 Instruction::Ops::SUB,
                                 Instruction::Ops::MUL,
                                 Instruction::Ops::DIV,
                                 };
 
-    std::unordered_set<unsigned> initialized_regs;
+    std::unordered_set<unsigned> initialized_regs; //TODO хэш функция дорогая
 
     for (size_t idx = 0; idx < size; ++idx) {
         unsigned dst_reg = reg(gen);
-        int operation_type = op_type(gen);
 
-        if (initialized_regs.find(dst_reg) == initialized_regs.end() || operation_type == 4) {
+        if (const int operation_type = op_type(gen); initialized_regs.find(dst_reg) == initialized_regs.end() || operation_type == 4) {
             returned.emplace_back(static_cast<int>(dst_reg));
             initialized_regs.insert(dst_reg);
         } else {
@@ -48,7 +47,7 @@ std::vector<Instruction> genSeq(const unsigned size, const unsigned regs, const 
                 returned.emplace_back(static_cast<int>(dst_reg));
                 initialized_regs.insert(dst_reg);
             } else {
-                int random_op = op_decision(gen);
+                const int random_op = op_decision(gen);
 
                 std::vector init_regs(initialized_regs.begin(), initialized_regs.end());
                 std::uniform_int_distribution<size_t> init_reg_selector(0, init_regs.size() - 1);
