@@ -1,11 +1,7 @@
-//
-// Created by димасик on 14.08.2025.
-//
 #pragma once
 #include "Instruction.h"
 #include <vector>
 #include <unordered_set>
-#include <unordered_map>
 
 struct DependencyNode {
     size_t instruction_idx;
@@ -16,8 +12,11 @@ struct DependencyNode {
     bool visited = false;
     int component_id = -1;
 
-    DependencyNode(size_t idx, int reg, int ver)
-        : instruction_idx(idx), reg_number(reg), version(ver) {}
+    DependencyNode(const size_t idx, const int reg, const int ver)
+        : instruction_idx(idx), reg_number(reg), version(ver) {
+        dependencies.reserve(2);
+        dependents.reserve(4);
+    }
 
 };
 
@@ -33,7 +32,7 @@ class DependencyAnalyzer {
 private:
     std::vector<DependencyNode> nodes;
     std::vector<Component> components;
-    std::unordered_map<int, int> current_versions;
+    std::vector<unsigned> current_versions;
 
 public:
     std::vector<Component> analyze(const std::vector<Instruction> & ops, unsigned regs);

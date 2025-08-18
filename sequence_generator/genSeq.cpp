@@ -34,26 +34,35 @@ std::vector<Instruction> genSeq(const unsigned size, const unsigned regs, const 
                                 Instruction::Ops::DIV,
                                 };
 
-    std::unordered_set<unsigned> initialized_regs; //TODO хэш функция дорогая
+    std::vector initialized_regs(regs, false);
+
+    std::vector<unsigned> init_regs_cache;
+    init_regs_cache.reserve(regs);
 
     for (size_t idx = 0; idx < size; ++idx) {
         unsigned dst_reg = reg(gen);
 
-        if (const int operation_type = op_type(gen); initialized_regs.find(dst_reg) == initialized_regs.end() || operation_type == 4) {
+        if (const int operation_type = op_type(gen); !initialized_regs[dst_reg] || operation_type == 4) {
             returned.emplace_back(static_cast<int>(dst_reg));
-            initialized_regs.insert(dst_reg);
+
+            if (!initialized_regs[dst_reg]) {
+                initialized_regs[dst_reg] = true;
+                init_regs_cache.push_back(dst_reg);
+            }
         } else {
             if (initialized_regs.size() < 2) {
                 returned.emplace_back(static_cast<int>(dst_reg));
-                initialized_regs.insert(dst_reg);
+                if (!initialized_regs[dst_reg]) {
+                    initialized_regs[dst_reg] = true;
+                    init_regs_cache.push_back(dst_reg);
+                }
             } else {
                 const int random_op = op_decision(gen);
 
-                std::vector init_regs(initialized_regs.begin(), initialized_regs.end());
-                std::uniform_int_distribution<size_t> init_reg_selector(0, init_regs.size() - 1);
+                std::uniform_int_distribution<size_t> init_reg_selector(0, init_regs_cache.size() - 1);
 
-                unsigned src_reg1 = init_regs[init_reg_selector(gen)];
-                unsigned src_reg2 = init_regs[init_reg_selector(gen)];
+                unsigned src_reg1 = init_regs_cache[init_reg_selector(gen)];
+                unsigned src_reg2 = init_regs_cache[init_reg_selector(gen)];
 
                 if (src_reg1 >= regs || src_reg2 >= regs || dst_reg >= regs) {
                     std::cerr << "Error: Register index out of bounds" << std::endl;
@@ -63,14 +72,14 @@ std::vector<Instruction> genSeq(const unsigned size, const unsigned regs, const 
                 if (forbiddenOp(src_reg1, src_reg2, ops[random_op])) {
                     int attempts = 0;
                     do {
-                        src_reg1 = init_regs[init_reg_selector(gen)];
-                        src_reg2 = init_regs[init_reg_selector(gen)];
+                        src_reg1 = init_regs_cache[init_reg_selector(gen)];
+                        src_reg2 = init_regs_cache[init_reg_selector(gen)];
                         attempts++;
                         if (attempts > 100) {
                             std::cerr << "Warning: Many attempts to avoid forbidden op" << std::endl;
-                            if (init_regs.size() >= 2) {
-                                src_reg1 = init_regs[0];
-                                src_reg2 = init_regs[1];
+                            if (init_regs_cache.size() >= 2) {
+                                src_reg1 = init_regs_cache[0];
+                                src_reg2 = init_regs_cache[1];
                             }
                             break;
                         }
@@ -79,7 +88,10 @@ std::vector<Instruction> genSeq(const unsigned size, const unsigned regs, const 
 
                 returned.emplace_back(ops[random_op], static_cast<int>(dst_reg),
                                         static_cast<int> (src_reg1), static_cast<int> (src_reg2));
-                initialized_regs.insert(dst_reg);
+                if (!initialized_regs[dst_reg]) {
+                    initialized_regs[dst_reg] = true;
+                    init_regs_cache.push_back(dst_reg);
+                }
             }
         }
     }

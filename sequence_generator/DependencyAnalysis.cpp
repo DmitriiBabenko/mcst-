@@ -3,14 +3,17 @@
 
 void DependencyAnalyzer::buildDependencyGraph(const std::vector<Instruction> & ops, const unsigned regs) {
     current_versions.clear();
-    for (unsigned i = 0; i < regs; ++i) {
-        current_versions[i] = 0;
-    }
+    current_versions.resize(regs, 0);
 
     nodes.clear();
     nodes.reserve(ops.size());
 
-    std::unordered_map<std::string, DependencyNode*> version_to_node;
+    std::vector<std::vector<DependencyNode*>> version_to_node(regs);
+
+    for (unsigned i = 0; i < regs; ++i) {
+        version_to_node[i].reserve(10);
+        version_to_node[i].push_back(nullptr);
+    }
 
     for (size_t i = 0; i < ops.size(); ++i) {
         const auto & instr = ops[i];
@@ -19,14 +22,16 @@ void DependencyAnalyzer::buildDependencyGraph(const std::vector<Instruction> & o
         DependencyNode* current_node = & nodes.back();
 
         if (instr.op != Instruction::Ops::INIT) {
-            std::unordered_set<DependencyNode*> unique_dependencies;
+            std::vector<DependencyNode*> unique_dependencies;
+            unique_dependencies.reserve(2);
 
             if (current_versions[instr.src_reg1] > 0) {
-                std::string src1_key = std::to_string(instr.src_reg1) + "_" + std::to_string(current_versions[instr.src_reg1]);
-                if (auto it1 = version_to_node.find(src1_key); it1 != version_to_node.end()) {
-                    unique_dependencies.insert(it1->second);
+                if (const unsigned version = current_versions[instr.src_reg1]; version < version_to_node[instr.src_reg1].size() &&
+                                                                               version_to_node[instr.src_reg1][version] != nullptr) {
+                    unique_dependencies.push_back(version_to_node[instr.src_reg1][version]);
                 } else {
-                    std::cerr << "Error: Could not find for " << src1_key << " in instruction " << i << std::endl;
+                    std::cerr << "Error: Could not find reg " << instr.src_reg1
+                                << " version " << version << " in instruction " << i <<std::endl;
                     return;
                 }
             } else {
@@ -36,11 +41,12 @@ void DependencyAnalyzer::buildDependencyGraph(const std::vector<Instruction> & o
             }
 
             if (current_versions[instr.src_reg2] > 0) {
-                std::string src2_key = std::to_string(instr.src_reg2) + "_" + std::to_string(current_versions[instr.src_reg2]);
-                if (auto it2 = version_to_node.find(src2_key); it2 != version_to_node.end()) {
-                    unique_dependencies.insert(it2->second);
+                if (const unsigned version = current_versions[instr.src_reg2]; version < version_to_node[instr.src_reg2].size() &&
+                                                                               version_to_node[instr.src_reg2][version] != nullptr) {
+                    unique_dependencies.push_back(version_to_node[instr.src_reg2][version]);
                 } else {
-                    std::cerr << "Error: Could not find for " << src2_key << " in instruction " << i << std::endl;
+                    std::cerr << "Error: Could not find reg " << instr.src_reg2
+                                << " version " << version << " in instruction " << i <<std::endl;
                     return;
                 }
             } else {
@@ -55,11 +61,13 @@ void DependencyAnalyzer::buildDependencyGraph(const std::vector<Instruction> & o
             }
         }
 
-        const int new_version = ++current_versions[instr.dest_reg];
+        const unsigned new_version = ++current_versions[instr.dest_reg];
         current_node->version = new_version;
 
-        std::string key = std::to_string(instr.dest_reg) + "_" + std::to_string(new_version);
-        version_to_node[key] = current_node;
+        if (new_version >= version_to_node[instr.dest_reg].size()) {
+            version_to_node[instr.dest_reg].resize(new_version + 1, nullptr);
+        }
+        version_to_node[instr.dest_reg][new_version] = current_node;
     }
 }
 
@@ -76,6 +84,7 @@ void DependencyAnalyzer::findComponents() {
         if (!node.visited) {
             Component comp;
             std::vector<DependencyNode*> stack;
+            stack.reserve(nodes.size());
             stack.push_back(&node);
 
             while(!stack.empty()) {
@@ -111,24 +120,41 @@ void DependencyAnalyzer::findComponents() {
 
 void DependencyAnalyzer::classifyRegisters(const std::vector<Instruction> & ops) {
     for (auto & comp : components) {
-        std::unordered_set<int> written_regs;
-        std::unordered_set<int> read_regs;
+       std::vector<bool> written_regs(ops.size(), false);
+        std::vector<bool> read_regs(ops.size(), false);
 
+        int max_reg = 0;
         for(const auto * node : comp.nodes) {
-            written_regs.insert(node->reg_number);
+            max_reg = std::max(max_reg, node->reg_number);
+        }
+        for (const size_t instr_idx : comp.instruction_indices) {
+            if (instr_idx < ops.size()) {
+                if (const auto & instr = ops[instr_idx]; instr.op != Instruction::Ops::INIT) {
+                    max_reg = std::max(max_reg, std::max(instr.src_reg1, instr.src_reg2));
+                }
+            }
+        }
+
+        if (max_reg >= static_cast<int> (written_regs.size())) {
+            written_regs.resize(max_reg + 1, false);
+            read_regs.resize(max_reg+ 1, false);
+        }
+
+        for (const auto * node : comp.nodes) {
+            written_regs[node->reg_number] = true;
         }
 
         for (const size_t instr_idx : comp.instruction_indices) {
             if (instr_idx < ops.size()) {
                 if (const auto & instr = ops[instr_idx]; instr.op != Instruction::Ops::INIT) {
-                    read_regs.insert(instr.src_reg1);
-                    read_regs.insert(instr.src_reg2);
+                    read_regs[instr.src_reg1] = true;
+                    read_regs[instr.src_reg2] = true;
                 }
             }
         }
 
-        for (int reg : read_regs) {
-            if (written_regs.find(reg) == written_regs.end()) {
+        for (int reg = 0; reg <= max_reg; ++reg) {
+            if (read_regs[reg] && !written_regs[reg]) {
                 comp.input_regs.insert(reg);
             }
         }
