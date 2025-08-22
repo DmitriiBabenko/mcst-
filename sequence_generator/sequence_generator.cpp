@@ -34,6 +34,7 @@ int main(const int argc, char* argv[]) {
         std::cerr << "Argument error: " << e.what() << "\n" << desc << "\n";
         return 1;
     }
+    std::cout<<1;
     solveRandomApply(seed, size, regs, ir, soi, sor);
     return 0;
 }

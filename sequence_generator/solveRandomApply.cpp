@@ -5,6 +5,7 @@
 #include <vector>
 #include <iostream>
 #include <algorithm>
+#include <memory>
 #include "../common_add/fpa_to_float.h"
 #include "DependencyAnalysis.h"
 struct ComponentSolution {
