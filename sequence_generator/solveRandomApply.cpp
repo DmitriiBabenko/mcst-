@@ -8,6 +8,8 @@
 #include <memory>
 #include "../common_add/fpa_to_float.h"
 #include "DependencyAnalysis.h"
+#include "VerificationGenerator.h"
+#include <sstream>
 struct ComponentSolution {
     bool is_satisfiable = false;
     std::unordered_map<std::string, float> variable_values;
@@ -73,14 +75,6 @@ ComponentSolution solveComponent(const Component& comp, const std::vector<Instru
         z3::expr var = ctx.constant(name.c_str(), float32);
 
         s.add(to_expr(ctx,  Z3_mk_fpa_is_normal(ctx, var)));
-
-        z3::expr min_val = ctx.fpa_val(-100.0f);
-        z3::expr max_val = ctx.fpa_val(100.0f);
-        s.add(var >= min_val && var <= max_val);
-
-        z3::expr small_pos = ctx.fpa_val(0.001f);
-        z3::expr small_neg = ctx.fpa_val(-0.001f);
-        s.add(var >= small_pos || var <= small_neg);
 
         local_vars.emplace(name, std::move(var));
     }
@@ -150,6 +144,10 @@ ComponentSolution solveComponent(const Component& comp, const std::vector<Instru
         auto result_it = local_vars.find(result_name);
         assert (result_it != local_vars.end());
         z3::expr & result_ref = result_it->second;
+
+        s.add(result_ref >= ctx.fpa_val(-1000.0f));
+        s.add(result_ref <= ctx.fpa_val(1000.0f));
+        s.add(result_ref >= ctx.fpa_val(0.0001f) || result_ref <= ctx.fpa_val(-0.0001f));
 
         if (instr.op != Instruction::Ops::INIT) {
             unsigned src1_version = versions_before.at(instr.src_reg1);
@@ -349,7 +347,35 @@ void presentResults(const std::vector<Component> & components,
         std::cout << "reg[" << reg << "] = " << final_value << "\n";
     }
 }
+void generateAndRunVerification(const std::vector<Component>& components,
+                              const std::vector<ComponentSolution>& solutions,
+                              const std::vector<Instruction>& OpsSeq,
+                              const unsigned regs_count,
+                              const unsigned seed,
+                              const std::string& verification_file) {
 
+    std::cout << "\n=== Generating Verification Code ===\n";
+
+    std::unordered_map<std::string, float> global_values;
+    for (size_t i = 0; i < components.size() && i < solutions.size(); ++i) {
+        const ComponentSolution& sol = solutions[i];
+        if (sol.is_satisfiable) {
+            for (const auto& [var_name, value] : sol.variable_values) {
+                global_values[var_name] = value;
+            }
+        }
+    }
+
+    bool success = VerificationGenerator::generateVerificationCode(
+        OpsSeq, global_values, components, regs_count, seed);
+
+    if (!success) {
+        std::cerr << "Failed to generate verification file: " << verification_file << std::endl;
+        return;
+    }
+
+    std::cout << "Generated verification file: " << verification_file << std::endl;
+}
 void solveRandomApply(const unsigned seed, const unsigned size, const unsigned regs, const bool intermediateResults, const bool soi, const bool sor) {
     auto getOpSymbol = [](const Instruction::Ops op) -> std::string {
         switch(op) {
@@ -421,4 +447,6 @@ void solveRandomApply(const unsigned seed, const unsigned size, const unsigned r
     }
 
     presentResults(components, solutions, OpsSeq, regs, intermediateResults);
+
+    generateAndRunVerification(components, solutions, OpsSeq, regs, seed, "seed_" + std::to_string(seed) + "_num_registers_" + std::to_string(regs));
 }
