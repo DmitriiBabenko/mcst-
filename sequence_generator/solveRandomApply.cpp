@@ -24,15 +24,15 @@ struct ComponentSolution {
     z3::context & getContext() const {
         return *ctx_ptr;
     }
-    z3::model* getModel() const {
-        return model_ptr.get();
+    z3::model & getModel() const {
+        return *model_ptr;
     }
 };
 
-float findFinalValue(const int reg, const std::unordered_map<std::string, float> & values,
+float findFinalValue(const unsigned reg, const std::unordered_map<std::string, float> & values,
         const std::vector<Instruction> & OpsSeq) {
 
-    int max_version = 0;
+    unsigned max_version = 0;
     for (const auto & instr : OpsSeq) {
         if (instr.dest_reg == reg) {
             max_version++;
@@ -68,7 +68,7 @@ ComponentSolution solveComponent(const Component& comp, const std::vector<Instru
 
     std::unordered_map<std::string, z3::expr> local_vars;
 
-    for (int reg : comp.input_regs) {
+    for (const unsigned reg : comp.input_regs) {
         std::string name = "reg_" + std::to_string(reg) + "_input";
         z3::expr var = ctx.constant(name.c_str(), float32);
 
@@ -85,22 +85,22 @@ ComponentSolution solveComponent(const Component& comp, const std::vector<Instru
         local_vars.emplace(name, std::move(var));
     }
 
-    std::unordered_map<int, int> global_versions;
-    for (int i = 0; i < regs; ++i) {
+    std::unordered_map<unsigned, unsigned> global_versions;
+    for (unsigned i = 0; i < regs; ++i) {
         global_versions[i] = 0;
     }
 
-    std::vector<std::unordered_map<int, int>> versions_at_instruction(OpsSeq.size());
+    std::vector<std::unordered_map<unsigned, unsigned>> versions_at_instruction(OpsSeq.size());
     for (size_t global_idx = 0; global_idx < OpsSeq.size(); ++global_idx) {
         versions_at_instruction[global_idx] = global_versions;
         const auto & instr = OpsSeq[global_idx];
         global_versions[instr.dest_reg]++;
     }
 
-    std::vector<size_t> sorted_indices = comp.instruction_indices;
+    std::vector<unsigned> sorted_indices = comp.instruction_indices;
     std::sort(sorted_indices.begin(), sorted_indices.end());
 
-    std::unordered_set<std::string> needed_vars;
+    std::vector<std::string> needed_vars;
 
     for (size_t idx : sorted_indices) {
         if (idx >= OpsSeq.size()) continue;
@@ -108,13 +108,13 @@ ComponentSolution solveComponent(const Component& comp, const std::vector<Instru
         const auto & instr = OpsSeq[idx];
         const auto & versions_before = versions_at_instruction[idx];
 
-        int result_version = versions_before.at(instr.dest_reg) + 1;
+        unsigned result_version = versions_before.at(instr.dest_reg) + 1;
         std::string result_name = "reg_" + std::to_string(instr.dest_reg) + "_" + std::to_string(result_version);
-        needed_vars.insert(result_name);
+        needed_vars.push_back(result_name);
 
         if (instr.op != Instruction::Ops::INIT) {
-            int src1_version = versions_before.at(instr.src_reg1);
-            int src2_version = versions_before.at(instr.src_reg2);
+            unsigned src1_version = versions_before.at(instr.src_reg1);
+            unsigned src2_version = versions_before.at(instr.src_reg2);
 
             std::string src1_name = (src1_version > 0)
                 ? "reg_" + std::to_string(instr.src_reg1) + "_" + std::to_string(src1_version)
@@ -124,8 +124,8 @@ ComponentSolution solveComponent(const Component& comp, const std::vector<Instru
                 ? "reg_" + std::to_string(instr.src_reg2) + "_" + std::to_string(src2_version)
                 : "reg_" + std::to_string(instr.src_reg2) + "_input";
 
-            needed_vars.insert(src1_name);
-            needed_vars.insert(src2_name);
+            needed_vars.push_back(src1_name);
+            needed_vars.push_back(src2_name);
         }
     }
 
@@ -139,27 +139,21 @@ ComponentSolution solveComponent(const Component& comp, const std::vector<Instru
 
     for (size_t idx : sorted_indices) {
 
-        if (idx >= OpsSeq.size()) {
-            std::cerr << "Error: Instruction index " << idx << " out of bounds" << std::endl;
-            return solution;
-        }
+        assert (idx < OpsSeq.size());
 
         const auto & instr = OpsSeq[idx];
         const auto & versions_before = versions_at_instruction[idx];
 
-        int result_version = versions_before.at(instr.dest_reg) + 1;
+        unsigned result_version = versions_before.at(instr.dest_reg) + 1;
         std::string result_name = "reg_" + std::to_string(instr.dest_reg) + "_" + std::to_string(result_version);
 
         auto result_it = local_vars.find(result_name);
-        if (result_it == local_vars.end()) {
-            std::cerr << "Error: Result variable " << result_name << " not found" << std::endl;
-            return solution;
-        }
+        assert (result_it != local_vars.end());
         z3::expr & result_ref = result_it->second;
 
         if (instr.op != Instruction::Ops::INIT) {
-            int src1_version = versions_before.at(instr.src_reg1);
-            int src2_version = versions_before.at(instr.src_reg2);
+            unsigned src1_version = versions_before.at(instr.src_reg1);
+            unsigned src2_version = versions_before.at(instr.src_reg2);
 
             std::string src1_name = (src1_version > 0)
                 ? "reg_" + std::to_string(instr.src_reg1) + "_" + std::to_string(src1_version)
@@ -172,15 +166,9 @@ ComponentSolution solveComponent(const Component& comp, const std::vector<Instru
             auto it1 = local_vars.find(src1_name);
             auto it2 = local_vars.find(src2_name);
 
-            if (it1 == local_vars.end()) {
-                std::cerr << "Error: Variable " << src1_name << " not foud for instruction " << idx << std::endl;
-                return solution;
-            }
+            assert (it1 != local_vars.end());
 
-            if (it2 == local_vars.end()) {
-                std::cerr << "Error: Variable " << src2_name << " not foud for instruction " << idx << std::endl;
-                return solution;
-            }
+            assert (it2 != local_vars.end());
 
             z3::expr & src1 = it1->second;
             z3::expr & src2 = it2->second;
@@ -216,7 +204,7 @@ ComponentSolution solveComponent(const Component& comp, const std::vector<Instru
 
         for (const auto & [name, var] : local_vars) {
             if (solution.getModel()) {
-                solution.variable_values[name] = fpa_to_float(solution.getModel()->eval(var));
+                solution.variable_values[name] = fpa_to_float(solution.getModel().eval(var));
             }
         }
     } else if (result == z3::unsat) {
@@ -231,7 +219,7 @@ ComponentSolution solveComponent(const Component& comp, const std::vector<Instru
 }
 
 
-Component createSubComponent(const Component & original, const std::vector<size_t> & instructions_indices,
+Component createSubComponent(const Component & original, const std::vector<unsigned> & instructions_indices,
                             const std::vector<Instruction> & OpsSeq) {
     Component sub;
     sub.instruction_indices = instructions_indices;
@@ -239,24 +227,24 @@ Component createSubComponent(const Component & original, const std::vector<size_
     for (const size_t idx : instructions_indices) {
         if (idx < OpsSeq.size()) {
             const auto & instr = OpsSeq[idx];
-            sub.involved_regs.insert(instr.dest_reg);
+            sub.involved_regs.push_back(instr.dest_reg);
             if (instr.op != Instruction::Ops::INIT) {
-                sub.involved_regs.insert((instr.src_reg1));
-                sub.involved_regs.insert(instr.src_reg2);
+                sub.involved_regs.push_back(instr.src_reg1);
+                sub.involved_regs.push_back(instr.src_reg2);
             }
         }
     }
 
-    std::unordered_set<int> written_in_sub;
+    std::vector<unsigned> written_in_sub;
     for (const size_t idx : instructions_indices) {
         if (idx < OpsSeq.size()) {
-            written_in_sub.insert(OpsSeq[idx].dest_reg);
+            written_in_sub.push_back(OpsSeq[idx].dest_reg);
         }
     }
 
-    for (int reg : sub.involved_regs) {
-        if (written_in_sub.find(reg) == written_in_sub.end()) {
-            sub.input_regs.insert(reg);
+    for (unsigned reg : sub.involved_regs) {
+        if ( std::find(written_in_sub.begin(), written_in_sub.end(), reg) == written_in_sub.end()) {
+            sub.input_regs.push_back(reg);
         }
     }
 
@@ -277,7 +265,7 @@ void analyzeProblematicInstruction(const Instruction & instr, const size_t idx) 
 void diagnozeUnsatComponent(const Component & comp, const std::vector<Instruction> & OpsSeq, const unsigned seed, const unsigned regs) {
     std::cout << "Diagnosing UNSAT component with " << comp.instruction_indices.size() << " instructions\n";
 
-    std::vector<size_t> sorted_indices = comp.instruction_indices;
+    std::vector<unsigned> sorted_indices = comp.instruction_indices;
     std::sort(sorted_indices.begin(), sorted_indices.end());
 
     if (sorted_indices.empty()) return;
@@ -286,7 +274,7 @@ void diagnozeUnsatComponent(const Component & comp, const std::vector<Instructio
     size_t problematic_start = 0;
 
     while (left < right) {
-        const size_t mid = (left + right) / 2;
+        const unsigned mid = (left + right) / 2;
 
         std::vector prefix(sorted_indices.begin(), sorted_indices.begin() + mid);
         if (prefix.empty()) {
@@ -320,10 +308,7 @@ void presentResults(const std::vector<Component> & components,
                     const unsigned regs_count,
                     const bool show_intermediate) {
 
-    if (components.size() != solutions.size()) {
-        std::cerr << "Error: Mismatch between components and solutions count" << std::endl;
-        return;
-    }
+    assert (components.size() == solutions.size());
 
     std::unordered_map<std::string, float> global_values;
 
@@ -339,7 +324,7 @@ void presentResults(const std::vector<Component> & components,
             }
         }
         std::cout << "\nRegisters: ";
-        for (const int reg : comp.involved_regs) {
+        for (const unsigned reg : comp.involved_regs) {
             std::cout << reg << " ";
         }
         std::cout << "\n";
@@ -360,7 +345,7 @@ void presentResults(const std::vector<Component> & components,
     std::cout << "\n=== Final Results ===\n";
 
     for (unsigned reg = 0; reg < regs_count; ++reg) {
-        const float final_value = findFinalValue(static_cast<int> (reg), global_values, OpsSeq);
+        const float final_value = findFinalValue(reg, global_values, OpsSeq);
         std::cout << "reg[" << reg << "] = " << final_value << "\n";
     }
 }
@@ -392,16 +377,9 @@ void solveRandomApply(const unsigned seed, const unsigned size, const unsigned r
         }
         std::cout << std::endl;
 
-        if (instr.dest_reg < 0 || instr.dest_reg >= static_cast<int>(regs)) {
-            std::cerr << "ERROR: Invalid dest_reg " << instr.dest_reg << std::endl;
-            return;
-        }
+        assert (instr.dest_reg < regs);
         if (instr.op != Instruction::Ops::INIT) {
-            if (instr.src_reg1 < 0 || instr.src_reg1 >= static_cast<int>(regs) ||
-                instr.src_reg2 < 0 || instr.src_reg2 >= static_cast<int>(regs)) {
-                std::cerr << "ERROR: Invalid src regs " << instr.src_reg1 << ", " << instr.src_reg2 << std::endl;
-                return;
-                }
+            assert(instr.src_reg1 < regs && instr.src_reg2 < regs);
         }
     }
 
@@ -417,7 +395,7 @@ void solveRandomApply(const unsigned seed, const unsigned size, const unsigned r
     }
     if (soi) {
         std::cout<<"sequence of instructions:"<<std::endl;
-        for (auto instr : OpsSeq) {
+        for (const auto instr : OpsSeq) {
             if (instr.op == Instruction::Ops::INIT) {
                 std::cout << "reg[" << instr.dest_reg << "] = random_value"<<std::endl;
             } else {
@@ -432,13 +410,13 @@ void solveRandomApply(const unsigned seed, const unsigned size, const unsigned r
     std::vector<ComponentSolution> solutions;
 
     solutions.reserve(components.size());
-    for (size_t i = 0; i < components.size(); ++i) {
-        ComponentSolution sol = solveComponent(components[i], OpsSeq, regs, seed + static_cast<unsigned> (i), sor);
+    for (unsigned i = 0; i < components.size(); ++i) {
+        ComponentSolution sol = solveComponent(components[i], OpsSeq, regs, seed + i, sor);
         solutions.push_back(std::move(sol));
 
         if (!solutions.back().is_satisfiable) {
             std::cout << "Component " << i << " is UNSAT - analyzing...\n";
-            diagnozeUnsatComponent(components[i], OpsSeq, seed + static_cast<unsigned>(i), regs);
+            diagnozeUnsatComponent(components[i], OpsSeq, seed + i, regs);
         }
     }
 

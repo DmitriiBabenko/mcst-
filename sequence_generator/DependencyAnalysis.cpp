@@ -1,6 +1,6 @@
 #include "DependencyAnalysis.h"
 #include <iostream>
-
+#include <cassert>
 void DependencyAnalyzer::buildDependencyGraph(const std::vector<Instruction> & ops, const unsigned regs) {
     current_versions.clear();
     current_versions.resize(regs, 0);
@@ -15,7 +15,7 @@ void DependencyAnalyzer::buildDependencyGraph(const std::vector<Instruction> & o
         version_to_node[i].push_back(nullptr);
     }
 
-    for (size_t i = 0; i < ops.size(); ++i) {
+    for (unsigned i = 0; i < ops.size(); ++i) {
         const auto & instr = ops[i];
 
         nodes.emplace_back(i, instr.dest_reg, current_versions[instr.dest_reg] + 1);
@@ -25,35 +25,13 @@ void DependencyAnalyzer::buildDependencyGraph(const std::vector<Instruction> & o
             std::vector<DependencyNode*> unique_dependencies;
             unique_dependencies.reserve(2);
 
-            if (current_versions[instr.src_reg1] > 0) {
-                if (const unsigned version = current_versions[instr.src_reg1]; version < version_to_node[instr.src_reg1].size() &&
-                                                                               version_to_node[instr.src_reg1][version] != nullptr) {
-                    unique_dependencies.push_back(version_to_node[instr.src_reg1][version]);
-                } else {
-                    std::cerr << "Error: Could not find reg " << instr.src_reg1
-                                << " version " << version << " in instruction " << i <<std::endl;
-                    return;
-                }
-            } else {
-                std::cerr << "Error: Using uninitialized register " << instr.src_reg1
-                            << " in instruction " << i << std::endl;
-                return;
-            }
+            assert (current_versions[instr.src_reg1] > 0);
+            unsigned version = current_versions[instr.src_reg1];
+            unique_dependencies.push_back(version_to_node[instr.src_reg1][version]);
 
-            if (current_versions[instr.src_reg2] > 0) {
-                if (const unsigned version = current_versions[instr.src_reg2]; version < version_to_node[instr.src_reg2].size() &&
-                                                                               version_to_node[instr.src_reg2][version] != nullptr) {
-                    unique_dependencies.push_back(version_to_node[instr.src_reg2][version]);
-                } else {
-                    std::cerr << "Error: Could not find reg " << instr.src_reg2
-                                << " version " << version << " in instruction " << i <<std::endl;
-                    return;
-                }
-            } else {
-                std::cerr << "Error: Using uninitialized register " << instr.src_reg2
-                            << " in instruction " << i << std::endl;
-                return;
-            }
+            assert (current_versions[instr.src_reg2] > 0);
+            version = current_versions[instr.src_reg2];
+            unique_dependencies.push_back(version_to_node[instr.src_reg2][version]);
 
             for (DependencyNode* dep : unique_dependencies) {
                 current_node->dependencies.push_back(dep);
@@ -73,7 +51,7 @@ void DependencyAnalyzer::buildDependencyGraph(const std::vector<Instruction> & o
 
 void DependencyAnalyzer::findComponents() {
     components.clear();
-    int component_counter = 0;
+    unsigned component_counter = 0;
 
     for (auto& node : nodes) {
         node.visited = false;
@@ -94,10 +72,10 @@ void DependencyAnalyzer::findComponents() {
                 if (current->visited) continue;
 
                 current->visited = true;
-                current->component_id = component_counter;
+                current->component_id = static_cast<int> (component_counter);
                 comp.nodes.push_back(current);
                 comp.instruction_indices.push_back(current->instruction_idx);
-                comp.involved_regs.insert(current->reg_number);
+                comp.involved_regs.push_back(current->reg_number);
 
                 for (auto * dep : current->dependencies) {
                     if (!dep->visited) {
@@ -123,11 +101,11 @@ void DependencyAnalyzer::classifyRegisters(const std::vector<Instruction> & ops)
        std::vector<bool> written_regs(ops.size(), false);
         std::vector<bool> read_regs(ops.size(), false);
 
-        int max_reg = 0;
+        unsigned max_reg = 0;
         for(const auto * node : comp.nodes) {
             max_reg = std::max(max_reg, node->reg_number);
         }
-        for (const size_t instr_idx : comp.instruction_indices) {
+        for (const unsigned instr_idx : comp.instruction_indices) {
             if (instr_idx < ops.size()) {
                 if (const auto & instr = ops[instr_idx]; instr.op != Instruction::Ops::INIT) {
                     max_reg = std::max(max_reg, std::max(instr.src_reg1, instr.src_reg2));
@@ -135,7 +113,7 @@ void DependencyAnalyzer::classifyRegisters(const std::vector<Instruction> & ops)
             }
         }
 
-        if (max_reg >= static_cast<int> (written_regs.size())) {
+        if (max_reg >= written_regs.size()) {
             written_regs.resize(max_reg + 1, false);
             read_regs.resize(max_reg+ 1, false);
         }
@@ -144,7 +122,7 @@ void DependencyAnalyzer::classifyRegisters(const std::vector<Instruction> & ops)
             written_regs[node->reg_number] = true;
         }
 
-        for (const size_t instr_idx : comp.instruction_indices) {
+        for (const unsigned instr_idx : comp.instruction_indices) {
             if (instr_idx < ops.size()) {
                 if (const auto & instr = ops[instr_idx]; instr.op != Instruction::Ops::INIT) {
                     read_regs[instr.src_reg1] = true;
@@ -153,9 +131,9 @@ void DependencyAnalyzer::classifyRegisters(const std::vector<Instruction> & ops)
             }
         }
 
-        for (int reg = 0; reg <= max_reg; ++reg) {
+        for (unsigned reg = 0; reg <= max_reg; ++reg) {
             if (read_regs[reg] && !written_regs[reg]) {
-                comp.input_regs.insert(reg);
+                comp.input_regs.push_back(reg);
             }
         }
     }

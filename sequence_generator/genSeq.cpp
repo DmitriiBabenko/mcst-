@@ -5,7 +5,7 @@
 #include <iostream>
 #include <algorithm>
 #include <unordered_set>
-
+#include <cassert>
 bool forbiddenOp(const unsigned & fst, const unsigned & snd, const Instruction::Ops & op) {
     const std::vector forbidden = {
         Instruction::Ops::SUB,
@@ -42,52 +42,42 @@ std::vector<Instruction> genSeq(const unsigned size, const unsigned regs, const 
     for (size_t idx = 0; idx < size; ++idx) {
         unsigned dst_reg = reg(gen);
 
-        if (const int operation_type = op_type(gen); !initialized_regs[dst_reg] || operation_type == 4) {
-            returned.emplace_back(static_cast<int>(dst_reg));
+        if (const unsigned operation_type = op_type(gen); !initialized_regs[dst_reg] || operation_type == 4) {
+            returned.emplace_back(dst_reg);
 
             if (!initialized_regs[dst_reg]) {
                 initialized_regs[dst_reg] = true;
                 init_regs_cache.push_back(dst_reg);
             }
         } else {
-            if (initialized_regs.size() < 2) {
-                returned.emplace_back(static_cast<int>(dst_reg));
+            if (init_regs_cache.size() < 2) {
+                returned.emplace_back(dst_reg);
                 if (!initialized_regs[dst_reg]) {
                     initialized_regs[dst_reg] = true;
                     init_regs_cache.push_back(dst_reg);
                 }
             } else {
-                const int random_op = op_decision(gen);
+                const unsigned random_op = op_decision(gen);
 
                 std::uniform_int_distribution<size_t> init_reg_selector(0, init_regs_cache.size() - 1);
 
                 unsigned src_reg1 = init_regs_cache[init_reg_selector(gen)];
                 unsigned src_reg2 = init_regs_cache[init_reg_selector(gen)];
 
-                if (src_reg1 >= regs || src_reg2 >= regs || dst_reg >= regs) {
-                    std::cerr << "Error: Register index out of bounds" << std::endl;
-                    continue;
-                }
+                assert(src_reg1 < regs || src_reg2 < regs || dst_reg < regs);
 
                 if (forbiddenOp(src_reg1, src_reg2, ops[random_op])) {
-                    int attempts = 0;
+                    unsigned attempts = 0;
                     do {
                         src_reg1 = init_regs_cache[init_reg_selector(gen)];
                         src_reg2 = init_regs_cache[init_reg_selector(gen)];
                         attempts++;
-                        if (attempts > 100) {
-                            std::cerr << "Warning: Many attempts to avoid forbidden op" << std::endl;
-                            if (init_regs_cache.size() >= 2) {
-                                src_reg1 = init_regs_cache[0];
-                                src_reg2 = init_regs_cache[1];
-                            }
-                            break;
-                        }
+                        assert(attempts <= 100);
                     } while (forbiddenOp(src_reg1, src_reg2, ops[random_op]) && attempts < 100);
                 }
 
-                returned.emplace_back(ops[random_op], static_cast<int>(dst_reg),
-                                        static_cast<int> (src_reg1), static_cast<int> (src_reg2));
+                returned.emplace_back(ops[random_op], dst_reg,
+                                        src_reg1, src_reg2);
                 if (!initialized_regs[dst_reg]) {
                     initialized_regs[dst_reg] = true;
                     init_regs_cache.push_back(dst_reg);
@@ -95,6 +85,5 @@ std::vector<Instruction> genSeq(const unsigned size, const unsigned regs, const 
             }
         }
     }
-
     return returned;
 }
