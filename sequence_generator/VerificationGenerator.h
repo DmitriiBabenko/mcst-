@@ -78,6 +78,7 @@ std::string VerificationGenerator::generateIncludes() {
 #include<float.h>
 #include<stdbool.h>
 #include<string.h>
+#include<cstdint>
 #include<time.h>)";
 }
 
@@ -94,10 +95,20 @@ std::string VerificationGenerator::generateHelperFunctions() {
     if (isnan(a) || isnan(b)) {
         return isnan(a) && isnan(b);
     }
-        if (isinf(a) || isinf(b)) {
-            return (isinf(a) && isinf(b) && ((a > 0) == (b > 0)));
-        }
-        return fabs(a - b) <= epsilon;
+
+    if (isinf(a) || isinf(b)) {
+        return (isinf(a) && isinf(b) && ((a > 0) == (b > 0)));
+    }
+    
+    if (a == 0.0f && b == 0.0f) {
+        return true;
+    } 
+    
+    uint32_t ia, ib;
+    memcpy(&ia, &a, sizeof(float));
+    memcpy(&ib, &b, sizeof(float));
+    return ia == ib;
+    
     }
 
     void print_header(const char * title) {
