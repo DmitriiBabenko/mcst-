@@ -6,7 +6,13 @@
 #include <string>
 #include <fstream>
 #include <iomanip>
+#include <sstream>
 
+std::string floatToFullPrecisionString(float v) {
+    std::ostringstream oss;
+    oss << std::setprecision(9) << v;
+    return oss.str();
+}
 class VerificationGenerator {
 private:
     struct VerificationData {
@@ -151,7 +157,7 @@ std::string VerificationGenerator::generateInitialization(const VerificationData
         auto it = data.predicted_values.find(init_name);
         if (it != data.predicted_values.end()) {
             code += "   registers[" + std::to_string(i) + "] = " +
-                    std::to_string(it->second) + "f; \n";
+                    floatToFullPrecisionString(it->second) + "f; \n";
             code += "   initialized[" + std::to_string(i) + "] = true;\n";
         } else {
             code += "   registers[" + std::to_string(i) + "] = NAN;\n";
@@ -178,7 +184,7 @@ std::string VerificationGenerator::generateInstructionExecution(const Verificati
             auto it = data.predicted_values.find(var_name);
             if (it != data.predicted_values.end()) {
                 code += "   registers[" + std::to_string(instr.dest_reg) + "] = " +
-                    std::to_string(it->second) + "f;\n";
+                    floatToFullPrecisionString(it->second) + "f;\n";
                 code += "   initialized[" + std::to_string(instr.dest_reg) + "] = true;\n";
                 code += "   printf(\"INIT: reg[%d] = %.8f\\n\", " +
                     std::to_string(instr.dest_reg) + ", registers[" +
@@ -243,13 +249,9 @@ std::string VerificationGenerator::generateInstructionExecution(const Verificati
             auto it = data.predicted_values.find(var_name);
             if (it != data.predicted_values.end()) {
                 code += "   total_checks++;\n";
-                code += "   if (!float_equal(result, " + std::to_string(it->second) +
+                code += "   if (!float_equal(result, " + floatToFullPrecisionString(it->second) +
                     "f, EPSILON)) {\n";
-                code += "   print_error(\"Mismatch at " + var_name +
-                    ": expected %.8f, got %.8f\");\n";
-                code += "   printf(\"Expected: " +
-                    std::to_string(it->second) + "\\n\");\n";
-                code += "       printf(\"                  Actual:  %.8f\\n\", result);\n";
+                code += "   printf(\"[ERROR] Mismatch at " + var_name + ": expected %.8f, got %.8f\\n\", " + floatToFullPrecisionString(it->second) + "f, result);\n";
                 code += "       verification_errors++;\n";
                 code += "   } else {\n";
                 code += "       print_success(\"" + var_name + " matches: %.8f\");\n";
@@ -273,10 +275,7 @@ std::string VerificationGenerator::generateVerification(const VerificationData& 
             code += "   total_checks++;\n";
             code += "   if (!float_equal(registers[" + std::to_string(reg) +
                 "], " + final_value + "f, EPSILON)) {\n";
-            code += "print_error(\"Final reg[" + std::to_string(reg) +
-                "] mismatch: expected " + final_value + ", got %.8f\");\n";
-            code += "printf(\"registers[" +
-                std::to_string(reg) + "]\");\n";
+            code += "printf(\"[ERROR] Final reg[" + std::to_string(reg) + "] mismatch: expected " + final_value + ", got %.8f\\n\", registers[" + std::to_string(reg) + "]);\n";
             code += "       verification_errors++;\n";
             code += "   } else {\n";
             code += "       print_success(\"Final reg[" + std::to_string(reg) +
@@ -291,8 +290,7 @@ std::string VerificationGenerator::generateVerification(const VerificationData& 
     code += "   if (verification_errors == 0) {\n";
     code += "       print_success(\"All verifications passed!\");\n";
     code += "   } else {\n";
-    code += "   print_error(\"Verification failed with %d errors\");\n";
-    code += "   printf(\"verification_errors\");\n";
+    code += "   printf(\"[ERROR] Verification failed with  %d errors\\n\", verification_errors);\n";
     code += "   print_register_state(registers, " +
         std::to_string(data.num_registers) + ", \"final\");\n";
     code += "   }\n";
@@ -354,13 +352,13 @@ std::string VerificationGenerator::findRegisterFinalValue(unsigned reg,
         std::string var_name = "reg_" + std::to_string(reg) + "_" + std::to_string(max_version);
         auto it = values.find(var_name);
         if (it != values.end()) {
-            return std::to_string(it->second);
+            return floatToFullPrecisionString(it->second);
         }
     }
     std::string input_name = "reg_" + std::to_string(reg) + "_input";
     auto it = values.find(input_name);
     if (it != values.end()) {
-        return std::to_string(it->second);
+        return floatToFullPrecisionString(it->second);
     }
     return "";
 }

@@ -1,3 +1,8 @@
 cmake-build-debug/
 cmake-build-debug/z3/bin/libz3.pdb
 cmake-build-debug-visual-studio
+.cache
+.idea
+.vscode
+build
+ci-extra

@@ -3,38 +3,21 @@ cmake_minimum_required(VERSION 3.20)
 project(my_app)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-
-set(Boost_ROOT "C:/Boost")
-find_package(Boost REQUIRED COMPONENTS program_options)
-
-set(Z3_INCLUDE_DIR "C:/z3/src/api")
-set(Z3_LIBRARY "C:/z3/build/Release/libz3.lib")
-
-include_directories(${Z3_INCLUDE_DIR})
-
-
-add_executable(solve_random
-        solve_random/solve_random.cpp
-        common_add/fpa_to_float.cpp
-        solve_random/makeRegs.cpp
-        solve_random/pseudoOperations.cpp
-        solve_random/getOperations.cpp
-        solve_random/addLimits.cpp
-)
+find_package(Boost QUIET COMPONENTS program_options)
+find_package(Z3 QUIET CONFIG)
 
 add_executable(sequence_generator
-        sequence_generator/sequence_generator.cpp
-        sequence_generator/solveRandomApply.cpp
-        sequence_generator/genSeq.cpp
-        sequence_generator/Instruction.h
-        common_add/fpa_to_float.cpp
-        sequence_generator/DependencyAnalysis.cpp
+    sequence_generator/sequence_generator.cpp
+    sequence_generator/solveRandomApply.cpp
+    sequence_generator/genSeq.cpp
+    sequence_generator/Instruction.h
+    common_add/fpa_to_float.cpp
+    sequence_generator/DependencyAnalysis.cpp
 )
 
-
-target_include_directories(solve_random PRIVATE ${Boost_INCLUDE_DIRS})
-target_link_libraries(solve_random PRIVATE ${Boost_LIBRARIES} ${Z3_LIBRARY})
-
-target_include_directories(sequence_generator PRIVATE ${Boost_INCLUDE_DIRS})
-target_link_libraries(sequence_generator PRIVATE ${Boost_LIBRARIES} ${Z3_LIBRARY})
+target_link_libraries(sequence_generator PRIVATE 
+    Boost::program_options
+    z3::libz3
+)

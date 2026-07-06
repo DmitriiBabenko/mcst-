@@ -374,7 +374,21 @@ void generateAndRunVerification(const std::vector<Component>& components,
         return;
     }
 
-    std::cout << "Generated verification file: " << verification_file << std::endl;
+    const std::string cpp_file = "seed_" + std::to_string(seed) + "_num registers_" + std::to_string(regs_count) + ".cpp";
+    const std::string exe_file = "seed_" + std::to_string(seed) + "_num_registers_" + std::to_string(regs_count) + ".exe";
+
+    std::cout << "Generated verification file: " << cpp_file << '\n';
+
+    const std::string compile_cmd = "g++ -o \"" + exe_file + "\" \"" + cpp_file + "\"";
+    std::cout << "Compiling verification code...\n";
+
+    if (const int compile_result = std::system(compile_cmd.c_str()); compile_result == 0) {
+        std::cout << "Compilation successful: " << exe_file << "\n=== Running Verification ===\n";
+        const std::string run_cmd = "\"" + exe_file + "\"";
+        std::system(run_cmd.c_str());
+    } else {
+        std::cerr << "Compilation failed for " << cpp_file << '\n';
+    }
 }
 void solveRandomApply(const unsigned seed, const unsigned size, const unsigned regs, const bool intermediateResults, const bool soi, const bool sor) {
     auto getOpSymbol = [](const Instruction::Ops op) -> std::string {
