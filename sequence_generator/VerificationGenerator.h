@@ -11,7 +11,11 @@
 std::string floatToFullPrecisionString(float v) {
     std::ostringstream oss;
     oss << std::setprecision(9) << v;
-    return oss.str();
+    std::string s = oss.str();
+    if (s.find('.') == std::string::npos) {
+        s += ".0";
+    }
+    return s;
 }
 class VerificationGenerator {
 private:
@@ -40,8 +44,8 @@ private:
     static std::string generateVerification(const VerificationData& data);
     static std::string generateComponentInfo(const std::vector<Component>& components);
 
-    static std::string getOperationSymbol(Instruction::Ops op);
-    static std::string getOperationName(Instruction::Ops op);
+    static std::string getOperationSymbol(Ops op);
+    static std::string getOperationName(Ops op);
     static std::string findRegisterFinalValue(unsigned reg,
         const std::unordered_map<std::string, float> & values,
         const std::vector<Instruction> & instructions);
@@ -187,7 +191,7 @@ std::string VerificationGenerator::generateInstructionExecution(const Verificati
     for (size_t i = 0; i < data.instructions.size(); i++) {
         const auto & instr = data.instructions[i];
 
-        if (instr.op == Instruction::Ops::INIT) {
+        if (instr.op == Ops::INIT) {
             versions[instr.dest_reg]++;
             std::string var_name = "reg_" + std::to_string(instr.dest_reg) + "_" +
                 std::to_string(versions[instr.dest_reg]);
@@ -224,16 +228,16 @@ std::string VerificationGenerator::generateInstructionExecution(const Verificati
             std::string operation;
 
             switch (instr.op) {
-                case Instruction::Ops::ADD:
+                case Ops::ADD:
                     operation = "src1 + src2";
                     break;
-                case Instruction::Ops::SUB:
+                case Ops::SUB:
                     operation = "src1 - src2";
                     break;
-                case Instruction::Ops::MUL:
+                case Ops::MUL:
                     operation = "src1 * src2";
                     break;
-                case Instruction::Ops::DIV:
+                case Ops::DIV:
                     code += "   if (src2 == 0.0f) {\n";
                     code += "       print_error(\"Divizion by zero at instruction " +
                         std::to_string(i) + "\");\n";
@@ -329,23 +333,23 @@ std::string VerificationGenerator::generateComponentInfo(const std::vector<Compo
     code += "*/";
     return code;
 }
-std::string VerificationGenerator::getOperationSymbol(Instruction::Ops op) {
+std::string VerificationGenerator::getOperationSymbol(Ops op) {
     switch (op) {
-        case Instruction::Ops::ADD: return "+";
-        case Instruction::Ops::SUB: return "-";
-        case Instruction::Ops::MUL: return "*";
-        case Instruction::Ops::DIV: return "/";
-        case Instruction::Ops::INIT: return "=";
+        case Ops::ADD: return "+";
+        case Ops::SUB: return "-";
+        case Ops::MUL: return "*";
+        case Ops::DIV: return "/";
+        case Ops::INIT: return "=";
         default: return "?";
     }
 }
-std::string VerificationGenerator::getOperationName(Instruction::Ops op) {
+std::string VerificationGenerator::getOperationName(Ops op) {
     switch (op) {
-        case Instruction::Ops::ADD: return "ADD";
-        case Instruction::Ops::SUB: return "SUB";
-        case Instruction::Ops::MUL: return "MUL";
-        case Instruction::Ops::DIV: return "DIV";
-        case Instruction::Ops::INIT: return "INIT";
+        case Ops::ADD: return "ADD";
+        case Ops::SUB: return "SUB";
+        case Ops::MUL: return "MUL";
+        case Ops::DIV: return "DIV";
+        case Ops::INIT: return "INIT";
         default: return "UNKNOWN";
     }
 }

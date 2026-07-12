@@ -6,5 +6,6 @@
 #define GENSEQ_H
 #include <vector>
 #include "Instruction.h"
-    std::vector<Instruction> genSeq(const unsigned size, const unsigned regs, const unsigned seed);
+#include "generateComponents.h"
+    std::vector<Instruction> genSeq(const unsigned regs, const unsigned seed, const std::vector<std::vector<AbstractOp>>& OpsComponents);
 #endif //GENSEQ_H

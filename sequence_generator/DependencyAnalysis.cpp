@@ -21,7 +21,7 @@ void DependencyAnalyzer::buildDependencyGraph(const std::vector<Instruction> & o
         nodes.emplace_back(i, instr.dest_reg, current_versions[instr.dest_reg] + 1);
         DependencyNode* current_node = & nodes.back();
 
-        if (instr.op != Instruction::Ops::INIT) {
+        if (instr.op != Ops::INIT) {
             std::vector<DependencyNode*> unique_dependencies;
             unique_dependencies.reserve(2);
 
@@ -107,7 +107,7 @@ void DependencyAnalyzer::classifyRegisters(const std::vector<Instruction> & ops)
         }
         for (const unsigned instr_idx : comp.instruction_indices) {
             if (instr_idx < ops.size()) {
-                if (const auto & instr = ops[instr_idx]; instr.op != Instruction::Ops::INIT) {
+                if (const auto & instr = ops[instr_idx]; instr.op != Ops::INIT) {
                     max_reg = std::max(max_reg, std::max(instr.src_reg1, instr.src_reg2));
                 }
             }
@@ -124,7 +124,7 @@ void DependencyAnalyzer::classifyRegisters(const std::vector<Instruction> & ops)
 
         for (const unsigned instr_idx : comp.instruction_indices) {
             if (instr_idx < ops.size()) {
-                if (const auto & instr = ops[instr_idx]; instr.op != Instruction::Ops::INIT) {
+                if (const auto & instr = ops[instr_idx]; instr.op != Ops::INIT) {
                     read_regs[instr.src_reg1] = true;
                     read_regs[instr.src_reg2] = true;
                 }

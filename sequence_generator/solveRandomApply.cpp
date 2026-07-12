@@ -1,6 +1,7 @@
 #include "solveRandomApply.h"
 #include "Instruction.h"
 #include "genSeq.h"
+#include "generateComponents.h"
 #include "z3++.h"
 #include <vector>
 #include <iostream>
@@ -106,7 +107,7 @@ ComponentSolution solveComponent(const Component& comp, const std::vector<Instru
         std::string result_name = "reg_" + std::to_string(instr.dest_reg) + "_" + std::to_string(result_version);
         needed_vars.push_back(result_name);
 
-        if (instr.op != Instruction::Ops::INIT) {
+        if (instr.op != Ops::INIT) {
             unsigned src1_version = versions_before.at(instr.src_reg1);
             unsigned src2_version = versions_before.at(instr.src_reg2);
 
@@ -149,7 +150,7 @@ ComponentSolution solveComponent(const Component& comp, const std::vector<Instru
         s.add(result_ref <= ctx.fpa_val(1000.0f));
         s.add(result_ref >= ctx.fpa_val(0.0001f) || result_ref <= ctx.fpa_val(-0.0001f));
 
-        if (instr.op != Instruction::Ops::INIT) {
+        if (instr.op != Ops::INIT) {
             unsigned src1_version = versions_before.at(instr.src_reg1);
             unsigned src2_version = versions_before.at(instr.src_reg2);
 
@@ -172,16 +173,16 @@ ComponentSolution solveComponent(const Component& comp, const std::vector<Instru
             z3::expr & src2 = it2->second;
 
             switch (instr.op) {
-                case Instruction::Ops::ADD:
+                case Ops::ADD:
                     s.add(result_ref == src1 + src2);
                 break;
-                case Instruction::Ops::SUB:
+                case Ops::SUB:
                     s.add(result_ref == src1 - src2);
                 break;
-                case Instruction::Ops::MUL:
+                case Ops::MUL:
                     s.add(result_ref == src1 * src2);
                 break;
-                case Instruction::Ops::DIV:
+                case Ops::DIV:
                     s.add(src2 != ctx.fpa_val(0.0f));
                 s.add(result_ref == src1 / src2);
                 break;
@@ -226,7 +227,7 @@ Component createSubComponent(const Component & original, const std::vector<unsig
         if (idx < OpsSeq.size()) {
             const auto & instr = OpsSeq[idx];
             sub.involved_regs.push_back(instr.dest_reg);
-            if (instr.op != Instruction::Ops::INIT) {
+            if (instr.op != Ops::INIT) {
                 sub.involved_regs.push_back(instr.src_reg1);
                 sub.involved_regs.push_back(instr.src_reg2);
             }
@@ -252,7 +253,7 @@ Component createSubComponent(const Component & original, const std::vector<unsig
 void analyzeProblematicInstruction(const Instruction & instr, const size_t idx) {
     std::cout << "Problematic instruction " << idx << ": ";
 
-    if (instr.op == Instruction::Ops::DIV) {
+    if (instr.op == Ops::DIV) {
         std::cout << "Division operation - potential division by zero\n"
         << "reg[" << instr.dest_reg << "] = reg[" << instr.src_reg1 << "] / reg[" << instr.src_reg2 << "]\n"
         << "Suggestion: Check if reg[" << instr.src_reg2 << "] can be zero\n";
@@ -390,14 +391,14 @@ void generateAndRunVerification(const std::vector<Component>& components,
         std::cerr << "Compilation failed for " << cpp_file << '\n';
     }
 }
-void solveRandomApply(const unsigned seed, const unsigned size, const unsigned regs, const bool intermediateResults, const bool soi, const bool sor) {
-    auto getOpSymbol = [](const Instruction::Ops op) -> std::string {
+void solveRandomApply(const unsigned seed, const unsigned size, const unsigned regs, const unsigned comps, const bool intermediateResults, const bool soi, const bool sor) {
+    auto getOpSymbol = [](const Ops op) -> std::string {
         switch(op) {
-            case Instruction::Ops::ADD: return "+";
-            case Instruction::Ops::SUB: return "-";
-            case Instruction::Ops::MUL: return "*";
-            case Instruction::Ops::DIV: return "/";
-            case Instruction::Ops::INIT: return "INIT";
+            case Ops::ADD: return "+";
+            case Ops::SUB: return "-";
+            case Ops::MUL: return "*";
+            case Ops::DIV: return "/";
+            case Ops::INIT: return "INIT";
             default: return "?";
         }
     };
@@ -405,20 +406,21 @@ void solveRandomApply(const unsigned seed, const unsigned size, const unsigned r
     std::cout << "Generating sequence with seed=" << seed
                 << ", size=" <<size << ", regs=" << regs << std::endl;
 
-    const std::vector<Instruction> OpsSeq = genSeq(size, regs, seed);
+    const std::vector<std::vector<AbstractOp>> OpsComponents = gen_component(size, seed, comps);
+    const std::vector<Instruction> OpsSeq = genSeq(regs, seed, OpsComponents);
 
     std::cout << "Generated " << OpsSeq.size() << " instructions" << std::endl;
 
     for (size_t i = 0; i < OpsSeq.size(); ++i) {
         const auto & instr = OpsSeq[i];
         std::cout << "Instr " << i << ": dst=" << instr.dest_reg;
-        if (instr.op != Instruction::Ops::INIT) {
+        if (instr.op != Ops::INIT) {
             std::cout << ", src1=" << instr.src_reg1 << ", src2=" << instr.src_reg2;
         }
         std::cout << std::endl;
 
         assert (instr.dest_reg < regs);
-        if (instr.op != Instruction::Ops::INIT) {
+        if (instr.op != Ops::INIT) {
             assert(instr.src_reg1 < regs && instr.src_reg2 < regs);
         }
     }
@@ -436,7 +438,7 @@ void solveRandomApply(const unsigned seed, const unsigned size, const unsigned r
     if (soi) {
         std::cout<<"sequence of instructions:"<<std::endl;
         for (const auto instr : OpsSeq) {
-            if (instr.op == Instruction::Ops::INIT) {
+            if (instr.op == Ops::INIT) {
                 std::cout << "reg[" << instr.dest_reg << "] = random_value"<<std::endl;
             } else {
                 std::cout << "reg[" << instr.dest_reg << "] = reg[" << instr.src_reg1

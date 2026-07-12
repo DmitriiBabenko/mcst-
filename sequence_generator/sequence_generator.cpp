@@ -9,7 +9,7 @@
 namespace po = boost::program_options;
 
 int main(const int argc, char* argv[]) {
-    unsigned seed = 0, size = 0, regs = 0;
+    unsigned seed = 0, size = 0, regs = 0, comps = 1;
     bool ir, soi, sor;
 
     po::options_description desc("Options");
@@ -18,6 +18,7 @@ int main(const int argc, char* argv[]) {
         ("seed", po::value<unsigned>(&seed)->required(), "random seed")
         ("size", po::value<unsigned>(&size)->required(), "execution size")
         ("regs", po::value<unsigned>(&regs)->required(), "number of registers")
+        ("comps", po::value<unsigned>(&comps)->required(), "number of components of tree of operations")
         ("ir", po::bool_switch(&ir), "show intermediate results")
         ("soi", po::bool_switch(&soi), "show sequence of instructions")
         ("sor", po::bool_switch(&sor), "show system of restrictions");
@@ -35,6 +36,6 @@ int main(const int argc, char* argv[]) {
         return 1;
     }
     std::cout<<1;
-    solveRandomApply(seed, size, regs, ir, soi, sor);
+    solveRandomApply(seed, size, regs, comps, ir, soi, sor);
     return 0;
 }

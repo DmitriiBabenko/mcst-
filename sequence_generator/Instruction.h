@@ -1,12 +1,12 @@
 #pragma once
-struct Instruction {
-    enum class Ops {
+enum class Ops {
         ADD,
         SUB,
         MUL,
         DIV,
         INIT
     };
+struct Instruction {
     Ops op;
     unsigned dest_reg;
     unsigned src_reg1;
