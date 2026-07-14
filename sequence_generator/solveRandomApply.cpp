@@ -392,6 +392,7 @@ void generateAndRunVerification(const std::vector<Component>& components,
     }
 }
 void solveRandomApply(const unsigned seed, const unsigned size, const unsigned regs, const unsigned comps, const bool intermediateResults, const bool soi, const bool sor) {
+    assert(regs >= size / (comps - 1));
     auto getOpSymbol = [](const Ops op) -> std::string {
         switch(op) {
             case Ops::ADD: return "+";
@@ -404,7 +405,7 @@ void solveRandomApply(const unsigned seed, const unsigned size, const unsigned r
     };
 
     std::cout << "Generating sequence with seed=" << seed
-                << ", size=" <<size << ", regs=" << regs << std::endl;
+                << ", size=" <<size << ", regs=" << regs << ", components=" << comps <<'\n';
 
     const std::vector<std::vector<AbstractOp>> OpsComponents = gen_component(size, seed, comps);
     const std::vector<Instruction> OpsSeq = genSeq(regs, seed, OpsComponents);

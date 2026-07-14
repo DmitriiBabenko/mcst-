@@ -6,6 +6,7 @@
 #include <string>
 #include <fstream>
 #include <iomanip>
+#include <cassert>
 #include <sstream>
 
 std::string floatToFullPrecisionString(float v) {

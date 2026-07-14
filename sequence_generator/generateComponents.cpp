@@ -10,7 +10,7 @@ std::vector<AbstractOp> gen_sequence(const unsigned size, std::mt19937& gen) {
     std::vector<AbstractOp> result_sequence;
     result_sequence.reserve(size);
 
-    const unsigned init_count = std::max(1u, std::min(size / 5, 5u));
+    const unsigned init_count = std::max(std::min(size, 2u), std::min(size / 5, 5u));
 
     for(std::size_t idx = 0; idx < init_count && idx < size; ++idx) {
         result_sequence.push_back(AbstractOp(Ops::INIT, idx, 1, 1));
@@ -32,7 +32,7 @@ std::vector<AbstractOp> gen_sequence(const unsigned size, std::mt19937& gen) {
     return result_sequence;
 }
 std::vector<std::vector<AbstractOp>> gen_component(const unsigned size, const unsigned seed, const unsigned comps) {
-    assert(comps < size);
+    assert(comps > 0 && comps <= size);
     std::vector<std::vector<AbstractOp>> returned;
     returned.reserve(comps);
     std::mt19937 gen(seed);

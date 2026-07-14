@@ -23,6 +23,7 @@ std::vector<Instruction> genSeq(const unsigned regs, const unsigned seed, const 
 
             const AbstractOp op = OpsComponents[idx_comp][idx];
 
+            assert(OpsComponents[idx_comp].size() <= regs);
             unsigned dst_reg = reg(gen);
             while (regs_cache[dst_reg]) {
                 dst_reg++;
