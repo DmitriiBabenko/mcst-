@@ -270,8 +270,8 @@ std::string VerificationGenerator::generateInstructionExecution(const Verificati
                 code += "   printf(\"[ERROR] Mismatch at " + var_name + ": expected %.8f, got %.8f\\n\", " + floatToFullPrecisionString(it->second) + "f, result);\n";
                 code += "       verification_errors++;\n";
                 code += "   } else {\n";
-                code += "       print_success(\"" + var_name + " matches: %.8f\");\n";
-                code += "       printf(\"                       %.8f\\n\", result);\n";
+                code += "       print_success(\"" + var_name + " matches: \");";
+                code += "       printf(\"                       %.8f\", result);\n";
                 code += "   }\n";
             }
         }
