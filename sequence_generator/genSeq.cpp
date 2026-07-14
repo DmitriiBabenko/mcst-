@@ -29,9 +29,8 @@ std::vector<Instruction> genSeq(const unsigned regs, const unsigned seed, const 
                 dst_reg++;
                 dst_reg %= regs;
             }
-            const char* random_op = op.kind();
 
-            if (random_op == "INIT") {
+            if (op.operation() == Ops::INIT) {
                 returned.emplace_back(dst_reg);
 
             } else {
