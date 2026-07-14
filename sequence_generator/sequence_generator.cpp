@@ -18,7 +18,7 @@ int main(const int argc, char* argv[]) {
         ("seed", po::value<unsigned>(&seed)->required(), "random seed")
         ("size", po::value<unsigned>(&size)->required(), "execution size")
         ("regs", po::value<unsigned>(&regs)->required(), "number of registers")
-        ("comps", po::value<unsigned>(&comps)->required(), "number of components of tree of operations")
+        ("comps", po::value<unsigned>(&comps)->required(), "minimal number of components of tree of operations")
         ("ir", po::bool_switch(&ir), "show intermediate results")
         ("soi", po::bool_switch(&soi), "show sequence of instructions")
         ("sor", po::bool_switch(&sor), "show system of restrictions");
