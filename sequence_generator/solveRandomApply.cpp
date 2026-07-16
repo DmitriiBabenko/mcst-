@@ -1,4 +1,5 @@
 #include "solveRandomApply.h"
+#include "Componentsolution.h"
 #include "Instruction.h"
 #include "genSeq.h"
 #include "generateComponents.h"
@@ -11,26 +12,7 @@
 #include "DependencyAnalysis.h"
 #include "VerificationGenerator.h"
 #include <sstream>
-struct ComponentSolution {
-    bool is_satisfiable = false;
-    std::unordered_map<std::string, float> variable_values;
-
-    std::unique_ptr<z3::context> ctx_ptr;
-    std::unique_ptr<z3::model> model_ptr;
-
-    ComponentSolution() :
-        ctx_ptr(std::make_unique<z3::context>()),
-        model_ptr(nullptr) {}
-    void setModel(z3::model && model) {
-        model_ptr = std::make_unique<z3::model>(std::move(model));
-    }
-    z3::context & getContext() const {
-        return *ctx_ptr;
-    }
-    z3::model & getModel() const {
-        return *model_ptr;
-    }
-};
+#include "Jsondiskcache.h" 
 
 float findFinalValue(const unsigned reg, const std::unordered_map<std::string, float> & values,
         const std::vector<Instruction> & OpsSeq) {
@@ -452,18 +434,25 @@ void solveRandomApply(const unsigned seed, const unsigned size, const unsigned r
 
     std::vector<ComponentSolution> solutions;
 
-    solutions.reserve(components.size());
-    for (unsigned i = 0; i < components.size(); ++i) {
-        ComponentSolution sol = solveComponent(components[i], OpsSeq, regs, seed + i, sor);
-        solutions.push_back(std::move(sol));
+    if (!tryloadfromcache(seed, size, regs, comps, solutions)) {
+        std::cout << "generating solutions...\n";
+        solutions.reserve(components.size());
+        for (unsigned i = 0; i < components.size(); ++i) {
+            ComponentSolution sol = solveComponent(components[i], OpsSeq, regs, seed + i, sor);
+            solutions.push_back(std::move(sol));
 
-        if (!solutions.back().is_satisfiable) {
-            std::cout << "Component " << i << " is UNSAT - analyzing...\n";
-            diagnozeUnsatComponent(components[i], OpsSeq, seed + i, regs);
+            if (!solutions.back().is_satisfiable) {
+                std::cout << "Component " << i << " is UNSAT - analyzing...\n";
+                diagnozeUnsatComponent(components[i], OpsSeq, seed + i, regs);
+            }
         }
+        cachesolutions(seed, size, regs, comps, solutions);
+    } else {
+        std::cout << "===loaded solutions from cache===\n";
     }
 
     presentResults(components, solutions, OpsSeq, regs, intermediateResults);
+    
 
     generateAndRunVerification(components, solutions, OpsSeq, regs, seed, "seed_" + std::to_string(seed) + "_num_registers_" + std::to_string(regs));
 }
