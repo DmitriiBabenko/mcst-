@@ -20,6 +20,10 @@ add_executable(sequence_generator
     sequence_generator/Jsondiskcache.h
     sequence_generator/Componentsolution.h
     sequence_generator/Jsondiskcache.cpp
+    sequence_generator/Node.h
+    sequence_generator/Node.cpp
+    sequence_generator/Graph.h
+    sequence_generator/Graph.cpp
 )
 
 target_link_libraries(sequence_generator PRIVATE 

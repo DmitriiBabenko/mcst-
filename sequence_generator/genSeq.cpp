@@ -3,9 +3,6 @@
 #include "generateComponents.h"
 #include <vector>
 #include <random>
-#include <iostream>
-#include <algorithm>
-#include <unordered_set>
 #include <cassert>
 std::vector<Instruction> genSeq(const unsigned regs, const unsigned seed, const std::vector<std::vector<AbstractOp>>& OpsComponents) {
     std::vector<Instruction> returned;

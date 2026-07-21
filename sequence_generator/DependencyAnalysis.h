@@ -1,7 +1,6 @@
 #pragma once
 #include "Instruction.h"
 #include <vector>
-#include <unordered_set>
 
 struct DependencyNode {
     unsigned instruction_idx;

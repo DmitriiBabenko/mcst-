@@ -1,0 +1,56 @@
+[
+{
+  "directory": "C:/work/mcst-/build",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe -DBOOST_CONTAINER_NO_LIB -DBOOST_CONTAINER_STATIC_LINK -DBOOST_JSON_NO_LIB=1 -DBOOST_JSON_STATIC_LINK=1 -DBOOST_PROGRAM_OPTIONS_NO_LIB -DBOOST_PROGRAM_OPTIONS_STATIC_LINK  -g -std=gnu++17 -o CMakeFiles\\sequence_generator.dir\\sequence_generator\\sequence_generator.cpp.obj -c C:\\work\\mcst-\\sequence_generator\\sequence_generator.cpp",
+  "file": "C:/work/mcst-/sequence_generator/sequence_generator.cpp",
+  "output": "CMakeFiles/sequence_generator.dir/sequence_generator/sequence_generator.cpp.obj"
+},
+{
+  "directory": "C:/work/mcst-/build",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe -DBOOST_CONTAINER_NO_LIB -DBOOST_CONTAINER_STATIC_LINK -DBOOST_JSON_NO_LIB=1 -DBOOST_JSON_STATIC_LINK=1 -DBOOST_PROGRAM_OPTIONS_NO_LIB -DBOOST_PROGRAM_OPTIONS_STATIC_LINK  -g -std=gnu++17 -o CMakeFiles\\sequence_generator.dir\\sequence_generator\\solveRandomApply.cpp.obj -c C:\\work\\mcst-\\sequence_generator\\solveRandomApply.cpp",
+  "file": "C:/work/mcst-/sequence_generator/solveRandomApply.cpp",
+  "output": "CMakeFiles/sequence_generator.dir/sequence_generator/solveRandomApply.cpp.obj"
+},
+{
+  "directory": "C:/work/mcst-/build",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe -DBOOST_CONTAINER_NO_LIB -DBOOST_CONTAINER_STATIC_LINK -DBOOST_JSON_NO_LIB=1 -DBOOST_JSON_STATIC_LINK=1 -DBOOST_PROGRAM_OPTIONS_NO_LIB -DBOOST_PROGRAM_OPTIONS_STATIC_LINK  -g -std=gnu++17 -o CMakeFiles\\sequence_generator.dir\\sequence_generator\\genSeq.cpp.obj -c C:\\work\\mcst-\\sequence_generator\\genSeq.cpp",
+  "file": "C:/work/mcst-/sequence_generator/genSeq.cpp",
+  "output": "CMakeFiles/sequence_generator.dir/sequence_generator/genSeq.cpp.obj"
+},
+{
+  "directory": "C:/work/mcst-/build",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe -DBOOST_CONTAINER_NO_LIB -DBOOST_CONTAINER_STATIC_LINK -DBOOST_JSON_NO_LIB=1 -DBOOST_JSON_STATIC_LINK=1 -DBOOST_PROGRAM_OPTIONS_NO_LIB -DBOOST_PROGRAM_OPTIONS_STATIC_LINK  -g -std=gnu++17 -o CMakeFiles\\sequence_generator.dir\\sequence_generator\\generateComponents.cpp.obj -c C:\\work\\mcst-\\sequence_generator\\generateComponents.cpp",
+  "file": "C:/work/mcst-/sequence_generator/generateComponents.cpp",
+  "output": "CMakeFiles/sequence_generator.dir/sequence_generator/generateComponents.cpp.obj"
+},
+{
+  "directory": "C:/work/mcst-/build",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe -DBOOST_CONTAINER_NO_LIB -DBOOST_CONTAINER_STATIC_LINK -DBOOST_JSON_NO_LIB=1 -DBOOST_JSON_STATIC_LINK=1 -DBOOST_PROGRAM_OPTIONS_NO_LIB -DBOOST_PROGRAM_OPTIONS_STATIC_LINK  -g -std=gnu++17 -o CMakeFiles\\sequence_generator.dir\\common_add\\fpa_to_float.cpp.obj -c C:\\work\\mcst-\\common_add\\fpa_to_float.cpp",
+  "file": "C:/work/mcst-/common_add/fpa_to_float.cpp",
+  "output": "CMakeFiles/sequence_generator.dir/common_add/fpa_to_float.cpp.obj"
+},
+{
+  "directory": "C:/work/mcst-/build",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe -DBOOST_CONTAINER_NO_LIB -DBOOST_CONTAINER_STATIC_LINK -DBOOST_JSON_NO_LIB=1 -DBOOST_JSON_STATIC_LINK=1 -DBOOST_PROGRAM_OPTIONS_NO_LIB -DBOOST_PROGRAM_OPTIONS_STATIC_LINK  -g -std=gnu++17 -o CMakeFiles\\sequence_generator.dir\\sequence_generator\\DependencyAnalysis.cpp.obj -c C:\\work\\mcst-\\sequence_generator\\DependencyAnalysis.cpp",
+  "file": "C:/work/mcst-/sequence_generator/DependencyAnalysis.cpp",
+  "output": "CMakeFiles/sequence_generator.dir/sequence_generator/DependencyAnalysis.cpp.obj"
+},
+{
+  "directory": "C:/work/mcst-/build",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe -DBOOST_CONTAINER_NO_LIB -DBOOST_CONTAINER_STATIC_LINK -DBOOST_JSON_NO_LIB=1 -DBOOST_JSON_STATIC_LINK=1 -DBOOST_PROGRAM_OPTIONS_NO_LIB -DBOOST_PROGRAM_OPTIONS_STATIC_LINK  -g -std=gnu++17 -o CMakeFiles\\sequence_generator.dir\\sequence_generator\\Jsondiskcache.cpp.obj -c C:\\work\\mcst-\\sequence_generator\\Jsondiskcache.cpp",
+  "file": "C:/work/mcst-/sequence_generator/Jsondiskcache.cpp",
+  "output": "CMakeFiles/sequence_generator.dir/sequence_generator/Jsondiskcache.cpp.obj"
+},
+{
+  "directory": "C:/work/mcst-/build",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe -DBOOST_CONTAINER_NO_LIB -DBOOST_CONTAINER_STATIC_LINK -DBOOST_JSON_NO_LIB=1 -DBOOST_JSON_STATIC_LINK=1 -DBOOST_PROGRAM_OPTIONS_NO_LIB -DBOOST_PROGRAM_OPTIONS_STATIC_LINK  -g -std=gnu++17 -o CMakeFiles\\sequence_generator.dir\\sequence_generator\\Node.cpp.obj -c C:\\work\\mcst-\\sequence_generator\\Node.cpp",
+  "file": "C:/work/mcst-/sequence_generator/Node.cpp",
+  "output": "CMakeFiles/sequence_generator.dir/sequence_generator/Node.cpp.obj"
+},
+{
+  "directory": "C:/work/mcst-/build",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe -DBOOST_CONTAINER_NO_LIB -DBOOST_CONTAINER_STATIC_LINK -DBOOST_JSON_NO_LIB=1 -DBOOST_JSON_STATIC_LINK=1 -DBOOST_PROGRAM_OPTIONS_NO_LIB -DBOOST_PROGRAM_OPTIONS_STATIC_LINK  -g -std=gnu++17 -o CMakeFiles\\sequence_generator.dir\\sequence_generator\\Graph.cpp.obj -c C:\\work\\mcst-\\sequence_generator\\Graph.cpp",
+  "file": "C:/work/mcst-/sequence_generator/Graph.cpp",
+  "output": "CMakeFiles/sequence_generator.dir/sequence_generator/Graph.cpp.obj"
+}
+]

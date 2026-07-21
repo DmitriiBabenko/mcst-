@@ -4,15 +4,15 @@
 #include "genSeq.h"
 #include "generateComponents.h"
 #include "z3++.h"
+#include <random>
 #include <vector>
 #include <iostream>
 #include <algorithm>
-#include <memory>
 #include "../common_add/fpa_to_float.h"
 #include "DependencyAnalysis.h"
 #include "VerificationGenerator.h"
-#include <sstream>
 #include "Jsondiskcache.h" 
+#include "Graph.h"
 
 float findFinalValue(const unsigned reg, const std::unordered_map<std::string, float> & values,
         const std::vector<Instruction> & OpsSeq) {
@@ -373,8 +373,34 @@ void generateAndRunVerification(const std::vector<Component>& components,
         std::cerr << "Compilation failed for " << cpp_file << '\n';
     }
 }
+void print_graph(std::vector<Graph> & components) {
+    std::cout << "Generated " << components.size() << " independent components\n";
+    for (std::size_t idx = 0; idx < components.size(); ++idx) {
+        std::cout <<"=== Component " << components[idx].getId() <<" ===\n";
+        for (std::size_t ind = 0; ind < components[idx].getNodes().size(); ++ind) {
+            std::cout << "node " << components[idx].getNodes()[ind]->getId() << '\n';
+            std::cout << "    incoming nodes: ";
+            for (const auto & c : components[idx].getNodes()[ind]->getInc()) {
+                std::cout << c->getId() << ' ';
+            }
+            if (components[idx].getNodes()[ind]->getInc().size() == 0) {
+                std::cout << '-';
+            }
+            std::cout <<'\n';
+            std::cout << "    outgoing nodes: ";
+            for (const auto & c : components[idx].getNodes()[ind]->getOut()) {
+                std::cout << c->getId() << ' ';
+            }
+            if (components[idx].getNodes()[ind]->getOut().size() == 0) {
+                std::cout << '-';
+            }
+            std::cout << '\n';
+        }
+    }
+}
 void solveRandomApply(const unsigned seed, const unsigned size, const unsigned regs, const unsigned comps, const bool intermediateResults, const bool soi, const bool sor) {
     assert(regs >= size / (comps - 1));
+
     auto getOpSymbol = [](const Ops op) -> std::string {
         switch(op) {
             case Ops::ADD: return "+";
@@ -386,9 +412,19 @@ void solveRandomApply(const unsigned seed, const unsigned size, const unsigned r
         }
     };
 
+    std::mt19937 gen(seed);
     std::cout << "Generating sequence with seed=" << seed
                 << ", size=" <<size << ", regs=" << regs << ", components=" << comps <<'\n';
 
+    std::vector<Graph> components_;
+    components_.reserve(comps);
+    const unsigned component_size = size / comps;
+    unsigned rest = size - component_size * comps;
+    for (std::size_t idx = 0 ; idx < comps; ++idx, rest ^= rest) {
+        components_.push_back(Graph(seed, component_size + rest, 2, idx));
+        components_[idx].build(gen);
+    }
+    print_graph(components_);
     const std::vector<std::vector<AbstractOp>> OpsComponents = gen_component(size, seed, comps);
     const std::vector<Instruction> OpsSeq = genSeq(regs, seed, OpsComponents);
 

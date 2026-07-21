@@ -1,5 +1,4 @@
 #include "DependencyAnalysis.h"
-#include <iostream>
 #include <cassert>
 void DependencyAnalyzer::buildDependencyGraph(const std::vector<Instruction> & ops, const unsigned regs) {
     current_versions.clear();
