@@ -24,4 +24,5 @@ struct ComponentSolution {
         return *model_ptr;
     }
 };
+
 #endif //COMPONENTSOLUTION_H

@@ -1,13 +1,14 @@
 cmake_minimum_required(VERSION 3.20)
+project(sequence_generator)
 
-project(my_app)
+find_path(Z3_INCLUDE_DIR NAMES z3++.h PATHS /usr/include)
+find_library(Z3_LIBRARY NAMES z3 PATHS /usr/lib/x86_64-linux-gnu)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+if(NOT Z3_INCLUDE_DIR OR NOT Z3_LIBRARY)
+    message(FATAL_ERROR "Z3 not found")
+endif()
 
-find_package(Boost QUIET COMPONENTS program_options)
-find_package(Z3 QUIET CONFIG)
-find_package(Boost REQUIRED COMPONENTS json)
+add_library(z3::libz3 UNKNOWN IMPORTED)
 
 add_executable(sequence_generator
     sequence_generator/sequence_generator.cpp
@@ -18,7 +19,7 @@ add_executable(sequence_generator
     common_add/fpa_to_float.cpp
     sequence_generator/DependencyAnalysis.cpp
     sequence_generator/Jsondiskcache.h
-    sequence_generator/Componentsolution.h
+    sequence_generator/ComponentSolution.h
     sequence_generator/Jsondiskcache.cpp
     sequence_generator/Node.h
     sequence_generator/Node.cpp
@@ -26,8 +27,16 @@ add_executable(sequence_generator
     sequence_generator/Graph.cpp
 )
 
-target_link_libraries(sequence_generator PRIVATE 
+set_target_properties(z3::libz3 PROPERTIES
+    IMPORTED_LOCATION "${Z3_LIBRARY}"
+    INTERFACE_INCLUDE_DIRECTORIES "${Z3_INCLUDE_DIR}"
+)
+
+find_package(Boost REQUIRED COMPONENTS program_options json)
+
+target_link_libraries(sequence_generator
+    PRIVATE
     Boost::program_options
-    z3::libz3
     Boost::json
+    z3::libz3
 )

@@ -1,5 +1,5 @@
 #include "solveRandomApply.h"
-#include "Componentsolution.h"
+#include "ComponentSolution.h"
 #include "Instruction.h"
 #include "genSeq.h"
 #include "generateComponents.h"
@@ -13,6 +13,17 @@
 #include "VerificationGenerator.h"
 #include "Jsondiskcache.h" 
 #include "Graph.h"
+
+auto getOpSymbol = [](const Ops op) -> std::string {
+    switch(op) {
+        case Ops::ADD: return "+";
+        case Ops::SUB: return "-";
+        case Ops::MUL: return "*";
+        case Ops::DIV: return "/";
+        case Ops::INIT: return "INIT";
+        default: return "?";
+    }
+};
 
 float findFinalValue(const unsigned reg, const std::unordered_map<std::string, float> & values,
         const std::vector<Instruction> & OpsSeq) {
@@ -39,8 +50,8 @@ float findFinalValue(const unsigned reg, const std::unordered_map<std::string, f
     return 0.0f;
 }
 
-ComponentSolution solveComponent(const Component& comp, const std::vector<Instruction> & OpsSeq,
-                                unsigned regs, unsigned seed, bool show_constraints) {
+ComponentSolution solveComponent(const Graph & graph,
+                                unsigned seed, bool show_constraints) {
     ComponentSolution solution;
     z3::context & ctx = solution.getContext();
 
@@ -50,151 +61,82 @@ ComponentSolution solveComponent(const Component& comp, const std::vector<Instru
     const z3::sort float32 = ctx.fpa_sort(8, 24);
     z3::solver s(ctx);
     s.set(p);
-
+    
     std::unordered_map<std::string, z3::expr> local_vars;
+    for (std::size_t ind = 0; ind < graph.getNodes().size(); ++ind) {
+        std::string var_name = getOpSymbol(graph.getNodes()[ind]->getOp()) + '_' + std::to_string(graph.getId()) + '_' + std::to_string(graph.getNodes()[ind]->getId());
+        z3::expr var = ctx.constant(var_name.c_str(), float32);
 
-    for (const unsigned reg : comp.input_regs) {
-        std::string name = "reg_" + std::to_string(reg) + "_input";
-        z3::expr var = ctx.constant(name.c_str(), float32);
-
-        s.add(to_expr(ctx,  Z3_mk_fpa_is_normal(ctx, var)));
-
-        local_vars.emplace(name, std::move(var));
-    }
-
-    std::unordered_map<unsigned, unsigned> global_versions;
-    for (unsigned i = 0; i < regs; ++i) {
-        global_versions[i] = 0;
-    }
-
-    std::vector<std::unordered_map<unsigned, unsigned>> versions_at_instruction(OpsSeq.size());
-    for (size_t global_idx = 0; global_idx < OpsSeq.size(); ++global_idx) {
-        versions_at_instruction[global_idx] = global_versions;
-        const auto & instr = OpsSeq[global_idx];
-        global_versions[instr.dest_reg]++;
-    }
-
-    std::vector<unsigned> sorted_indices = comp.instruction_indices;
-    std::sort(sorted_indices.begin(), sorted_indices.end());
-
-    std::vector<std::string> needed_vars;
-
-    for (size_t idx : sorted_indices) {
-        if (idx >= OpsSeq.size()) continue;
-
-        const auto & instr = OpsSeq[idx];
-        const auto & versions_before = versions_at_instruction[idx];
-
-        unsigned result_version = versions_before.at(instr.dest_reg) + 1;
-        std::string result_name = "reg_" + std::to_string(instr.dest_reg) + "_" + std::to_string(result_version);
-        needed_vars.push_back(result_name);
-
-        if (instr.op != Ops::INIT) {
-            unsigned src1_version = versions_before.at(instr.src_reg1);
-            unsigned src2_version = versions_before.at(instr.src_reg2);
-
-            std::string src1_name = (src1_version > 0)
-                ? "reg_" + std::to_string(instr.src_reg1) + "_" + std::to_string(src1_version)
-                : "reg_" + std::to_string(instr.src_reg1) + "_input";
-
-            std::string src2_name = (src2_version > 0)
-                ? "reg_" + std::to_string(instr.src_reg2) + "_" + std::to_string(src2_version)
-                : "reg_" + std::to_string(instr.src_reg2) + "_input";
-
-            needed_vars.push_back(src1_name);
-            needed_vars.push_back(src2_name);
-        }
-    }
-
-    for (const std::string & var_name : needed_vars) {
-        if (local_vars.find(var_name) == local_vars.end()) {
-            z3::expr var = ctx.constant(var_name.c_str(), float32);
+        if (graph.getNodes()[ind]->getOp() == Ops::INIT) {
             s.add(z3::to_expr(ctx, Z3_mk_fpa_is_normal(ctx, var)));
-            local_vars.emplace(var_name, std::move(var));
-        }
-    }
+        } else {
+            s.add(var >= ctx.fpa_val(-1000.0f));
+            s.add(var <= ctx.fpa_val(1000.0f));
+            s.add(var >= ctx.fpa_val(0.0001f) || var <= ctx.fpa_val(-0.0001f));
 
-    for (size_t idx : sorted_indices) {
+            z3::expr_vector src_exprs(ctx);
 
-        assert (idx < OpsSeq.size());
+            for (std::size_t idx = 0; idx < graph.getNodes()[ind]->getInc().size(); ++idx) {
+                const Node * node = graph.getNodes()[ind]->getInc()[idx];
+                std::string src_name = getOpSymbol(node->getOp()) + '_' + std::to_string(graph.getId()) + '_' + std::to_string(node->getId());
+                z3::expr & src_expr = local_vars[src_name];
+                src_exprs.push_back(src_expr);
+            }
 
-        const auto & instr = OpsSeq[idx];
-        const auto & versions_before = versions_at_instruction[idx];
-
-        unsigned result_version = versions_before.at(instr.dest_reg) + 1;
-        std::string result_name = "reg_" + std::to_string(instr.dest_reg) + "_" + std::to_string(result_version);
-
-        auto result_it = local_vars.find(result_name);
-        assert (result_it != local_vars.end());
-        z3::expr & result_ref = result_it->second;
-
-        s.add(result_ref >= ctx.fpa_val(-1000.0f));
-        s.add(result_ref <= ctx.fpa_val(1000.0f));
-        s.add(result_ref >= ctx.fpa_val(0.0001f) || result_ref <= ctx.fpa_val(-0.0001f));
-
-        if (instr.op != Ops::INIT) {
-            unsigned src1_version = versions_before.at(instr.src_reg1);
-            unsigned src2_version = versions_before.at(instr.src_reg2);
-
-            std::string src1_name = (src1_version > 0)
-                ? "reg_" + std::to_string(instr.src_reg1) + "_" + std::to_string(src1_version)
-                : "reg_" + std::to_string(instr.src_reg1) + "_input";
-
-            std::string src2_name = (src2_version > 0)
-                ? "reg_" + std::to_string(instr.src_reg2) + "_" + std::to_string(src2_version)
-                : "reg_" + std::to_string(instr.src_reg2) + "_input";
-
-            auto it1 = local_vars.find(src1_name);
-            auto it2 = local_vars.find(src2_name);
-
-            assert (it1 != local_vars.end());
-
-            assert (it2 != local_vars.end());
-
-            z3::expr & src1 = it1->second;
-            z3::expr & src2 = it2->second;
-
-            switch (instr.op) {
+            z3::expr result(ctx);
+            switch (graph.getNodes()[ind]->getOp()) {
                 case Ops::ADD:
-                    s.add(result_ref == src1 + src2);
+                    result = z3::sum(src_exprs);
                 break;
                 case Ops::SUB:
-                    s.add(result_ref == src1 - src2);
+                    result = src_exprs[0];
+                    for (std::size_t i = 1; i < src_exprs.size(); ++i) {
+                        result = result - src_exprs[i];
+                    }
                 break;
                 case Ops::MUL:
-                    s.add(result_ref == src1 * src2);
+                    result = src_exprs[0];
+                    for (std::size_t i = 1; i < src_exprs.size(); ++i) {
+                        result = result * src_exprs[i];
+                    }
                 break;
                 case Ops::DIV:
-                    s.add(src2 != ctx.fpa_val(0.0f));
-                s.add(result_ref == src1 / src2);
+                    result = src_exprs[0];
+                    for (std::size_t i = 1; i < src_exprs.size(); ++i) {
+                        s.add(src_exprs[i] != ctx.fpa_val(0.0f));
+                        result = result / src_exprs[i];
+                    }
                 break;
                 default:
-                    std::cerr << "Error: Unknown operation in instructions " << idx << std::endl;
+                    std::cerr << "Error: Unknown operation in instructions " << var_name << std::endl;
                     return solution;
             }
+            s.add(result == var);
         }
+
+        local_vars[var_name] = var;
     }
 
-    if (show_constraints) {
-        std::cout << "Component constraints:\n" << s << "\n";
-    }
+    // if (show_constraints) {
+    //     std::cout << "Component constraints:\n" << s << "\n";
+    // }
 
-    if (z3::check_result result = s.check(); result == z3::sat) {
-        solution.is_satisfiable = true;
-        solution.setModel(s.get_model());
+    // if (z3::check_result result = s.check(); result == z3::sat) {
+    //     solution.is_satisfiable = true;
+    //     solution.setModel(s.get_model());
 
-        for (const auto & [name, var] : local_vars) {
-            if (solution.getModel()) {
-                solution.variable_values[name] = fpa_to_float(solution.getModel().eval(var));
-            }
-        }
-    } else if (result == z3::unsat) {
-        solution.is_satisfiable = false;
-        std::cout << "Component is UNSAT" << std::endl;
-    } else {
-        solution.is_satisfiable = false;
-        std::cout << "Component solving returned UNKNOWN" << std::endl;
-    }
+    //     for (const auto & [name, var] : local_vars) {
+    //         if (solution.getModel()) {
+    //             solution.variable_values[name] = fpa_to_float(solution.getModel().eval(var));
+    //         }
+    //     }
+    // } else if (result == z3::unsat) {
+    //     solution.is_satisfiable = false;
+    //     std::cout << "Component is UNSAT" << std::endl;
+    // } else {
+    //     solution.is_satisfiable = false;
+    //     std::cout << "Component solving returned UNKNOWN" << std::endl;
+    // }
 
     return solution;
 }
@@ -330,6 +272,7 @@ void presentResults(const std::vector<Component> & components,
         std::cout << "reg[" << reg << "] = " << final_value << "\n";
     }
 }
+
 void generateAndRunVerification(const std::vector<Component>& components,
                               const std::vector<ComponentSolution>& solutions,
                               const std::vector<Instruction>& OpsSeq,
@@ -358,7 +301,7 @@ void generateAndRunVerification(const std::vector<Component>& components,
     }
 
     const std::string cpp_file = "seed_" + std::to_string(seed) + "_num registers_" + std::to_string(regs_count) + ".cpp";
-    const std::string exe_file = "seed_" + std::to_string(seed) + "_num_registers_" + std::to_string(regs_count) + ".exe";
+    const std::string exe_file = "seed_" + std::to_string(seed) + "_num_registers_" + std::to_string(regs_count);
 
     std::cout << "Generated verification file: " << cpp_file << '\n';
 
@@ -367,29 +310,31 @@ void generateAndRunVerification(const std::vector<Component>& components,
 
     if (const int compile_result = std::system(compile_cmd.c_str()); compile_result == 0) {
         std::cout << "Compilation successful: " << exe_file << "\n=== Running Verification ===\n";
-        const std::string run_cmd = "\"" + exe_file + "\"";
+        const std::string run_cmd = "./\"" + exe_file + "\"";
         std::system(run_cmd.c_str());
     } else {
         std::cerr << "Compilation failed for " << cpp_file << '\n';
     }
 }
+
 void print_graph(std::vector<Graph> & components) {
     std::cout << "Generated " << components.size() << " independent components\n";
     for (std::size_t idx = 0; idx < components.size(); ++idx) {
         std::cout <<"=== Component " << components[idx].getId() <<" ===\n";
         for (std::size_t ind = 0; ind < components[idx].getNodes().size(); ++ind) {
-            std::cout << "node " << components[idx].getNodes()[ind]->getId() << '\n';
+            std::cout << "node " << components[idx].getId() << "_" << components[idx].getNodes()[ind]->getId() << "     |";
+            std::cout << getOpSymbol(components[idx].getNodes()[ind]->getOp()) << '|';
             std::cout << "    incoming nodes: ";
             for (const auto & c : components[idx].getNodes()[ind]->getInc()) {
-                std::cout << c->getId() << ' ';
+                std::cout << components[idx].getId() << "_" << c->getId() << ' ';
             }
             if (components[idx].getNodes()[ind]->getInc().size() == 0) {
                 std::cout << '-';
             }
-            std::cout <<'\n';
+            std::cout <<"   |";
             std::cout << "    outgoing nodes: ";
             for (const auto & c : components[idx].getNodes()[ind]->getOut()) {
-                std::cout << c->getId() << ' ';
+                std::cout << components[idx].getId() << "_" << c->getId() << ' ';
             }
             if (components[idx].getNodes()[ind]->getOut().size() == 0) {
                 std::cout << '-';
@@ -398,19 +343,11 @@ void print_graph(std::vector<Graph> & components) {
         }
     }
 }
+
+
+
 void solveRandomApply(const unsigned seed, const unsigned size, const unsigned regs, const unsigned comps, const bool intermediateResults, const bool soi, const bool sor) {
     assert(regs >= size / (comps - 1));
-
-    auto getOpSymbol = [](const Ops op) -> std::string {
-        switch(op) {
-            case Ops::ADD: return "+";
-            case Ops::SUB: return "-";
-            case Ops::MUL: return "*";
-            case Ops::DIV: return "/";
-            case Ops::INIT: return "INIT";
-            default: return "?";
-        }
-    };
 
     std::mt19937 gen(seed);
     std::cout << "Generating sequence with seed=" << seed
@@ -425,48 +362,20 @@ void solveRandomApply(const unsigned seed, const unsigned size, const unsigned r
         components_[idx].build(gen);
     }
     print_graph(components_);
-    const std::vector<std::vector<AbstractOp>> OpsComponents = gen_component(size, seed, comps);
-    const std::vector<Instruction> OpsSeq = genSeq(regs, seed, OpsComponents);
 
-    std::cout << "Generated " << OpsSeq.size() << " instructions" << std::endl;
-
-    for (size_t i = 0; i < OpsSeq.size(); ++i) {
-        const auto & instr = OpsSeq[i];
-        std::cout << "Instr " << i << ": dst=" << instr.dest_reg;
-        if (instr.op != Ops::INIT) {
-            std::cout << ", src1=" << instr.src_reg1 << ", src2=" << instr.src_reg2;
-        }
-        std::cout << std::endl;
-
-        assert (instr.dest_reg < regs);
-        if (instr.op != Ops::INIT) {
-            assert(instr.src_reg1 < regs && instr.src_reg2 < regs);
-        }
-    }
-
-    DependencyAnalyzer analyzer;
-    const std::vector<Component> components = analyzer.analyze(OpsSeq, regs);
-
-    std::cout << "Found " << components.size() << " independent components\n";
-
-    for (size_t i = 0; i < components.size(); ++i) {
-        std::cout << "Component " << i << " has " << components[i].nodes.size()
-                    << " nodes and " << components[i].instruction_indices.size()
-                    << " instructions" << std::endl;
-    }
-    if (soi) {
-        std::cout<<"sequence of instructions:"<<std::endl;
-        for (const auto instr : OpsSeq) {
-            if (instr.op == Ops::INIT) {
-                std::cout << "reg[" << instr.dest_reg << "] = random_value"<<std::endl;
-            } else {
-                std::cout << "reg[" << instr.dest_reg << "] = reg[" << instr.src_reg1
-                 << "] "<< getOpSymbol(instr.op)<<" reg[" << instr.src_reg2 << "]"
-                << std::endl;
-            }
-        }
-        std::cout<<std::endl;
-    }
+    // if (soi) {
+    //     std::cout<<"sequence of instructions:"<<std::endl;
+    //     for (const auto instr : OpsSeq) {
+    //         if (instr.op == Ops::INIT) {
+    //             std::cout << "reg[" << instr.dest_reg << "] = random_value"<<std::endl;
+    //         } else {
+    //             std::cout << "reg[" << instr.dest_reg << "] = reg[" << instr.src_reg1
+    //              << "] "<< getOpSymbol(instr.op)<<" reg[" << instr.src_reg2 << "]"
+    //             << std::endl;
+    //         }
+    //     }
+    //     std::cout<<std::endl;
+    // }
 
     std::vector<ComponentSolution> solutions;
 

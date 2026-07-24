@@ -3,8 +3,12 @@
 #include <random>
 class ChooseOp{
 public:
-    std::size_t get_arity() {
-        return 2;
+    std::size_t get_arity(Ops op) {
+        if (op == Ops::INIT) {
+            return 0;
+        } else {
+            return 2;
+        }
     }
 };
 
@@ -18,19 +22,21 @@ public:
         ChooseOp random_op;
         unsigned cur_size = 0;
         while (cur_size < _min_inits) {
-            nodes.push_back(new Node(std::vector<Node*>(), cur_size));
+            nodes.push_back(new Node(std::vector<Node*>(), cur_size, Ops::INIT));
             ++cur_size;
         }
+        std::uniform_int_distribution<std::size_t> operation_selector(0, static_cast<std::size_t>(Ops::COUNT) - 1);
         while (cur_size < _size) {
-            std::size_t cur_op = random_op.get_arity();
-            std::vector<Node*> sources(cur_op);
-            for (std::size_t idx = 0, source_idx = 0; idx < cur_op; ++idx) {
-                std::uniform_int_distribution<std::size_t> source_selector(source_idx, cur_size - cur_op + idx);
+            Ops op_name = static_cast<Ops>(operation_selector(gen));
+            std::size_t op_arity = random_op.get_arity(op_name);
+            std::vector<Node*> sources(op_arity);
+            for (std::size_t idx = 0, source_idx = 0; idx < op_arity; ++idx) {
+                std::uniform_int_distribution<std::size_t> source_selector(source_idx, cur_size - op_arity + idx);
                 source_idx = source_selector(gen);
                 sources[idx] = nodes[source_idx];
                 ++source_idx;
             }
-            nodes.push_back(new Node(std::move(sources), cur_size));
+            nodes.push_back(new Node(std::move(sources), cur_size, op_name));
             ++cur_size;
         }
     }

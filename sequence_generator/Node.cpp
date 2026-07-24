@@ -1,9 +1,10 @@
 #include "Node.h"
 
-Node::Node(std::vector<Node*> && inc, std::size_t id):
+Node::Node(std::vector<Node*> && inc, std::size_t id, Ops op):
     _inc(std::move(inc)),
     _visited(false),
-    _id(id){
+    _id(id),
+    _op(op) {
         for (auto & node : _inc) {
             node->addOut(this);
         }
@@ -36,3 +37,7 @@ Node::Node(std::vector<Node*> && inc, std::size_t id):
     const std::size_t Node::getId() const {
         return _id;
     }
+
+const Ops Node::getOp() const {
+    return _op;
+}

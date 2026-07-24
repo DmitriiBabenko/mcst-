@@ -1,11 +1,5 @@
 #pragma once
-enum class Ops {
-        ADD,
-        SUB,
-        MUL,
-        DIV,
-        INIT
-    };
+#include "Node.h"
 struct Instruction {
     Ops op;
     unsigned dest_reg;
