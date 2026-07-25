@@ -13,11 +13,7 @@ add_library(z3::libz3 UNKNOWN IMPORTED)
 add_executable(sequence_generator
     sequence_generator/sequence_generator.cpp
     sequence_generator/solveRandomApply.cpp
-    sequence_generator/genSeq.cpp
-    sequence_generator/generateComponents.cpp
-    sequence_generator/Instruction.h
     common_add/fpa_to_float.cpp
-    sequence_generator/DependencyAnalysis.cpp
     sequence_generator/Jsondiskcache.h
     sequence_generator/ComponentSolution.h
     sequence_generator/Jsondiskcache.cpp

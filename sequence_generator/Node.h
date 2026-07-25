@@ -22,11 +22,14 @@ public:
     bool visited() const;
     const std::size_t getId() const;
     const Ops getOp() const;
+    void setValue(float value);
+    const float getValue() const;
 private:
     std::vector<Node*> _inc;
     std::vector<Node*> _out;
     bool _visited;
     std::size_t _id;
     Ops _op;
+    float _value;
 };
 #endif //NODE_H

@@ -3,7 +3,7 @@
 //
 #include <boost/program_options.hpp>
 #include <iostream>
-
+#include <vector>
 #include "solveRandomApply.h"
 
 namespace po = boost::program_options;
@@ -35,6 +35,15 @@ int main(const int argc, char* argv[]) {
         std::cerr << "Argument error: " << e.what() << "\n" << desc << "\n";
         return 1;
     }
-    solveRandomApply(seed, size, regs, comps, ir, soi, sor);
+    assert(regs >= size / (comps - 1));
+    std::cout << "Generating sequence with seed=" << seed
+                << ", size=" <<size << ", regs=" << regs << ", components=" << comps <<'\n';
+
+    std::vector<Graph> components = generate_sequense(seed, size, comps, soi);
+    
+    std::vector<ComponentSolution> system_of_restrictions = generate_system_of_restrictions(components, seed, sor);
+
+    solve_system(components, system_of_restrictions);
+
     return 0;
 }

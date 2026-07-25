@@ -41,3 +41,11 @@ Node::Node(std::vector<Node*> && inc, std::size_t id, Ops op):
 const Ops Node::getOp() const {
     return _op;
 }
+
+    void Node::setValue(float value) {
+        _value = value;
+    }
+
+const float Node::getValue() const {
+    return _value;
+}
