@@ -45,5 +45,6 @@ int main(const int argc, char* argv[]) {
 
     solve_system(components, system_of_restrictions);
 
+    std::vector<Node*> soted_nodes = build_secuense_nodes(components);
     return 0;
 }

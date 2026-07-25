@@ -417,3 +417,14 @@ void solve_system(std::vector<Graph> & components, std::vector<ComponentSolution
         }
     }
 }
+
+std::vector<Node *> build_secuense_nodes(std::vector<Graph> & components) {
+    std::vector<Node *> result_secuense;
+    for (std::size_t idx = 0; idx < components.size(); ++idx) {
+        std::vector<Node*> nodes = components[idx].getNodes();
+        for (std::size_t ind = 0; ind < nodes.size(); ++ind) {
+            result_secuense.push_back(nodes[ind]);
+        }
+    }
+    return result_secuense;
+}
