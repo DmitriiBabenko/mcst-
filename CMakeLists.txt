@@ -21,6 +21,10 @@ add_executable(sequence_generator
     sequence_generator/Node.cpp
     sequence_generator/Graph.h
     sequence_generator/Graph.cpp
+    sequence_generator/Registerallocation.h
+    sequence_generator/Registerallocation.cpp
+    sequence_generator/VerificationGenerator.h
+    sequence_generator/VerificationGenerator.cpp
 )
 
 set_target_properties(z3::libz3 PROPERTIES

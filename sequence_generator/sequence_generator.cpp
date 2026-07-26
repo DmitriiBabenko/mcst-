@@ -5,6 +5,8 @@
 #include <iostream>
 #include <vector>
 #include "solveRandomApply.h"
+#include "Registerallocation.h"
+#include "VerificationGenerator.h"
 
 namespace po = boost::program_options;
 
@@ -45,6 +47,17 @@ int main(const int argc, char* argv[]) {
 
     solve_system(components, system_of_restrictions);
 
-    std::vector<Node*> soted_nodes = build_secuense_nodes(components);
+    std::vector<Node*> sorted_nodes = build_secuense_nodes(components);
+    std::unordered_map<Node*, std::size_t> rho = assign_registers(sorted_nodes, regs);
+
+    const std::string verify_cpp = VerificationGenerator::generateVerificationCode(sorted_nodes, rho, regs, seed);
+    if (verify_cpp.empty()) {
+        std::cerr << "Failed to write verification file\n";
+        return 1;
+    }
+    if (!VerificationGenerator::compileAndRun(verify_cpp)) {
+        return 1;
+    }
+
     return 0;
 }
