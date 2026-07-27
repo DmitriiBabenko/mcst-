@@ -37,8 +37,7 @@ std::string cacheFilePath(const unsigned seed, const unsigned size, const unsign
     "_comps" + std::to_string(comps) + ".json"; 
 }
 
-bool tryloadfromcache(const unsigned seed, const unsigned size, const unsigned regs, const unsigned comps, std::vector<ComponentSolution> & solutions) {
-    const std::string path = cacheFilePath(seed, size, regs, comps);
+bool tryloadfromcache(std::vector<ComponentSolution> & solutions, const std::string & path, unsigned & cached_seed, unsigned & cached_size, unsigned & cached_comps) {
 
     if (!std::filesystem::exists(path)) {
         return false;
@@ -53,6 +52,10 @@ bool tryloadfromcache(const unsigned seed, const unsigned size, const unsigned r
 
     const auto & obj = jv.as_object();
 
+    cached_seed  = static_cast<unsigned>(obj.at("seed").to_number<std::uint64_t>());
+    cached_size  = static_cast<unsigned>(obj.at("size").to_number<std::uint64_t>());
+    cached_comps = static_cast<unsigned>(obj.at("comps").to_number<std::uint64_t>());
+
     const auto & solutions_arr = obj.at("solutions").as_array();
     solutions.reserve(solutions_arr.size());
     for (const auto & item : solutions_arr) {
@@ -61,9 +64,11 @@ bool tryloadfromcache(const unsigned seed, const unsigned size, const unsigned r
 
     return true;
 }
-void cachesolutions(const unsigned seed, const unsigned size, const unsigned regs, const unsigned comps, std::vector<ComponentSolution> & solutions) {
-    std::filesystem::create_directories("cache_solutions");
-    const std::string path = cacheFilePath(seed, size, regs, comps);
+void cachesolutions(std::vector<ComponentSolution> & solutions, const std::string & path, const unsigned seed, const unsigned size, const unsigned comps) {
+    const std::filesystem::path fs_path(path);
+    if (fs_path.has_parent_path()) {
+        std::filesystem::create_directories(fs_path.parent_path());
+    }
 
     boost::json::array solutions_json;
     solutions_json.reserve(solutions.size());
@@ -72,7 +77,10 @@ void cachesolutions(const unsigned seed, const unsigned size, const unsigned reg
     }
 
     const boost::json::object out = {
-        {"solutions", std::move(solutions_json)}
+        {"solutions", std::move(solutions_json)},
+        {"seed", seed},
+        {"size", size},
+        {"comps", comps}
     };
 
     std::ofstream file(path);

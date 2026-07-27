@@ -20,31 +20,6 @@ auto getOpSymbol = [](const Ops op) -> std::string {
         default: return "?";
     }
 };
-//-----------------------------------------------------------------------
-// float findFinalValue(const unsigned reg, const std::unordered_map<std::string, float> & values,
-//         const std::vector<Instruction> & OpsSeq) {
-
-//     unsigned max_version = 0;
-//     for (const auto & instr : OpsSeq) {
-//         if (instr.dest_reg == reg) {
-//             max_version++;
-//         }
-//     }
-
-//     if (max_version > 0) {
-//         const std::string var_name = "reg_" + std::to_string(reg) + "_" + std::to_string(max_version);
-//         if (const auto it = values.find(var_name); it != values.end()) {
-//             return it->second;
-//         }
-//     }
-
-//     const std::string input_name = "reg_" + std::to_string(reg) + "_input";
-//     if (const auto it = values.find(input_name); it != values.end()) {
-//         return it->second;
-//     }
-
-//     return 0.0f;
-// }
 
 ComponentSolution generate_subsystem_of_restrictions(const Graph & graph,
                                 unsigned seed, bool show_constraints) {
@@ -125,204 +100,10 @@ ComponentSolution generate_subsystem_of_restrictions(const Graph & graph,
     if (show_constraints) {
          std::cout << "\n=====System of restrictions in component № " <<graph.getId() <<"=====\n"<< s << "\n";
     }
-
-    // if (z3::check_result result = s.check(); result == z3::sat) {
-    //     solution.is_satisfiable = true;
-    //     solution.setModel(s.get_model());
-
-    //     for (const auto & [name, var] : local_vars) {
-    //         if (solution.getModel()) {
-    //             solution.variable_values[name] = fpa_to_float(solution.getModel().eval(var));
-    //         }
-    //     }
-    // } else if (result == z3::unsat) {
-    //     solution.is_satisfiable = false;
-    //     std::cout << "Component is UNSAT" << std::endl;
-    // } else {
-    //     solution.is_satisfiable = false;
-    //     std::cout << "Component solving returned UNKNOWN" << std::endl;
-    // }
     solution.setSolver(std::move(s));
     return solution;
 }
 
-//-----------------------------------------------------------------------
-// Component createSubComponent(const Component & original, const std::vector<unsigned> & instructions_indices,
-//                             const std::vector<Instruction> & OpsSeq) {
-//     Component sub;
-//     sub.instruction_indices = instructions_indices;
-
-//     for (const size_t idx : instructions_indices) {
-//         if (idx < OpsSeq.size()) {
-//             const auto & instr = OpsSeq[idx];
-//             sub.involved_regs.push_back(instr.dest_reg);
-//             if (instr.op != Ops::INIT) {
-//                 sub.involved_regs.push_back(instr.src_reg1);
-//                 sub.involved_regs.push_back(instr.src_reg2);
-//             }
-//         }
-//     }
-
-//     std::vector<unsigned> written_in_sub;
-//     for (const size_t idx : instructions_indices) {
-//         if (idx < OpsSeq.size()) {
-//             written_in_sub.push_back(OpsSeq[idx].dest_reg);
-//         }
-//     }
-
-//     for (unsigned reg : sub.involved_regs) {
-//         if ( std::find(written_in_sub.begin(), written_in_sub.end(), reg) == written_in_sub.end()) {
-//             sub.input_regs.push_back(reg);
-//         }
-//     }
-
-//     return sub;
-// }
-//-----------------------------------------------------------------------
-// void analyzeProblematicInstruction(const Instruction & instr, const size_t idx) {
-//     std::cout << "Problematic instruction " << idx << ": ";
-
-//     if (instr.op == Ops::DIV) {
-//         std::cout << "Division operation - potential division by zero\n"
-//         << "reg[" << instr.dest_reg << "] = reg[" << instr.src_reg1 << "] / reg[" << instr.src_reg2 << "]\n"
-//         << "Suggestion: Check if reg[" << instr.src_reg2 << "] can be zero\n";
-//     } else {
-//         std::cout << "Unexpected UNSAT cause in arithmetic operation\n";
-//     }
-// }
-//-----------------------------------------------------------------------
-// void diagnozeUnsatComponent(const Component & comp, const std::vector<Instruction> & OpsSeq, const unsigned seed, const unsigned regs) {
-//     std::cout << "Diagnosing UNSAT component with " << comp.instruction_indices.size() << " instructions\n";
-
-//     std::vector<unsigned> sorted_indices = comp.instruction_indices;
-//     std::sort(sorted_indices.begin(), sorted_indices.end());
-
-//     if (sorted_indices.empty()) return;
-
-//     size_t left = 0, right = sorted_indices.size();
-//     size_t problematic_start = 0;
-
-//     while (left < right) {
-//         const unsigned mid = (left + right) / 2;
-
-//         std::vector prefix(sorted_indices.begin(), sorted_indices.begin() + mid);
-//         if (prefix.empty()) {
-//             left = mid + 1;
-//             continue;
-//         }
-
-//         Component test_comp = createSubComponent(comp, prefix, OpsSeq);
-
-//         if (const ComponentSolution test_sol = solveComponent(test_comp, OpsSeq, regs, seed, false); test_sol.is_satisfiable) {
-//             left = mid + 1;
-//             problematic_start = mid;
-//         } else {
-//             right = mid;
-//         }
-//     }
-
-//     if (problematic_start < sorted_indices.size()) {
-//         std::cout << "Problem starts at instruction " << sorted_indices[problematic_start] << "\n";
-//     }
-
-//     if (sorted_indices[problematic_start] < OpsSeq.size()) {
-//         const Instruction & problematic = OpsSeq[sorted_indices[problematic_start]];
-//         analyzeProblematicInstruction(problematic, sorted_indices[problematic_start]);
-//     }
-// }
-//-----------------------------------------------------------------------
-// void presentResults(const std::vector<Component> & components,
-//                     const std::vector<ComponentSolution> & solutions,
-//                     const std::vector<Instruction> & OpsSeq,
-//                     const unsigned regs_count,
-//                     const bool show_intermediate) {
-
-//     assert (components.size() == solutions.size());
-
-//     std::unordered_map<std::string, float> global_values;
-
-//     for (size_t i = 0; i < components.size() && i < solutions.size(); ++i) {
-//         const Component & comp = components[i];
-//         const ComponentSolution & sol = solutions[i];
-
-//         std::cout<<"\n=== Component " << i << "===\n"
-//         << "Instructions: ";
-//         for (const size_t idx : comp.instruction_indices) {
-//             if (idx < OpsSeq.size()) {
-//                 std:: cout << idx << " ";
-//             }
-//         }
-//         std::cout << "\nRegisters: ";
-//         for (const unsigned reg : comp.involved_regs) {
-//             std::cout << reg << " ";
-//         }
-//         std::cout << "\n";
-
-//         if (sol.is_satisfiable) {
-//             std::cout << "Status: SAT\n";
-//             for (const auto & [var_name, value] : sol.variable_values) {
-//                 global_values[var_name] = value;
-//                 if (show_intermediate) {
-//                     std::cout << " " << var_name << " = " << value << "\n";
-//                 }
-//             }
-//         } else {
-//             std::cout << "Status: UNSAT\n";
-//         }
-//     }
-
-//     std::cout << "\n=== Final Results ===\n";
-
-//     for (unsigned reg = 0; reg < regs_count; ++reg) {
-//         const float final_value = findFinalValue(reg, global_values, OpsSeq);
-//         std::cout << "reg[" << reg << "] = " << final_value << "\n";
-//     }
-// }
-//--------------------------------------------------------------------------
-// void generateAndRunVerification(const std::vector<Component>& components,
-//                               const std::vector<ComponentSolution>& solutions,
-//                               const std::vector<Instruction>& OpsSeq,
-//                               const unsigned regs_count,
-//                               const unsigned seed,
-//                               const std::string& verification_file) {
-
-//     std::cout << "\n=== Generating Verification Code ===\n";
-
-//     std::unordered_map<std::string, float> global_values;
-//     for (size_t i = 0; i < components.size() && i < solutions.size(); ++i) {
-//         const ComponentSolution& sol = solutions[i];
-//         if (sol.is_satisfiable) {
-//             for (const auto& [var_name, value] : sol.variable_values) {
-//                 global_values[var_name] = value;
-//             }
-//         }
-//     }
-
-//     bool success = VerificationGenerator::generateVerificationCode(
-//         OpsSeq, global_values, components, regs_count, seed);
-
-//     if (!success) {
-//         std::cerr << "Failed to generate verification file: " << verification_file << std::endl;
-//         return;
-//     }
-
-//     const std::string cpp_file = "seed_" + std::to_string(seed) + "_num registers_" + std::to_string(regs_count) + ".cpp";
-//     const std::string exe_file = "seed_" + std::to_string(seed) + "_num_registers_" + std::to_string(regs_count);
-
-//     std::cout << "Generated verification file: " << cpp_file << '\n';
-
-//     const std::string compile_cmd = "g++ -o \"" + exe_file + "\" \"" + cpp_file + "\"";
-//     std::cout << "Compiling verification code...\n";
-
-//     if (const int compile_result = std::system(compile_cmd.c_str()); compile_result == 0) {
-//         std::cout << "Compilation successful: " << exe_file << "\n=== Running Verification ===\n";
-//         const std::string run_cmd = "./\"" + exe_file + "\"";
-//         std::system(run_cmd.c_str());
-//     } else {
-//         std::cerr << "Compilation failed for " << cpp_file << '\n';
-//     }
-// }
-//-----------------------------------------------------------------------
 void print_graph(std::vector<Graph> & components) {
     std::cout << "Generated " << components.size() << " independent components\n";
     for (std::size_t idx = 0; idx < components.size(); ++idx) {
@@ -355,6 +136,18 @@ std::pair<std::size_t, std::size_t> parse_pair(const std::string & s) {
     std::size_t first = std::stoull(s.substr(0, pos));
     std::size_t second = std::stoull(s.substr(pos + 1));
     return {first, second};
+}
+
+void apply_cached_values(std::vector<Graph> & components, const std::vector<ComponentSolution> & solutions) {
+    for (const auto & solution : solutions) {
+        if (!solution.is_satisfiable) {
+            continue;
+        }
+        for (const auto & [name, value] : solution.variable_values) {
+            auto [cmd_id, nd_id] = parse_pair(name);
+            components[cmd_id].getNodes()[nd_id]->setValue(value);
+        }
+    }
 }
 
 std::vector<Graph> generate_sequense(const unsigned seed, const unsigned size, const unsigned comps, const bool soi) {
@@ -397,11 +190,13 @@ void solve_system(std::vector<Graph> & components, std::vector<ComponentSolution
         z3::solver & solver = solution.getSolver();
         if (z3::check_result result = solver.check(); result == z3::sat) {
             std::cout << "SAT\n";
+            solution.is_satisfiable = true;
             solution.setModel(solver.get_model());
              for (const auto & [name, var] : solution.local_vars) {
                 auto [cmp_id, nd_id] = parse_pair(name);
                 float value = fpa_to_float(solution.getModel().eval(var));
                 components[cmp_id].getNodes()[nd_id]->setValue(value);
+                solution.variable_values[name] = value;
                 std::cout << name <<"  ==  "<< value << '\n';  
              }
         } else if (result == z3::unsat) {
