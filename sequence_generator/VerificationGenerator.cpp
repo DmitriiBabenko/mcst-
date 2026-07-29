@@ -84,8 +84,8 @@ static bool float_equal(float a, float b, float isinf) {
 }
 
 std::string VerificationGenerator::generateMainFunction(
-    const std::vector<Node*> & sorted_nodes,
-    const std::unordered_map<Node*, std::size_t> & rho,
+    const std::vector<std::shared_ptr<Node>> & sorted_nodes,
+    const std::unordered_map<std::shared_ptr<Node>, std::size_t> & rho,
     unsigned num_registers,
     unsigned seed) {
  
@@ -100,7 +100,7 @@ std::string VerificationGenerator::generateMainFunction(
  
     code += "    print_header(\"Executing sequence\");\n\n";
  
-    for (Node * v : sorted_nodes) {
+    for (std::shared_ptr<Node> v : sorted_nodes) {
         const std::size_t reg = rho.at(v);
         const std::string node_label = std::to_string(v->getId());
         const float predicted = v->getValue();
@@ -113,7 +113,7 @@ std::string VerificationGenerator::generateMainFunction(
             continue;
         }
  
-        const std::vector<Node*> & inc = v->getInc();
+        const std::vector<std::shared_ptr<Node>> & inc = v->getInc();
  
         code += "    {\n";
         for (std::size_t i = 0; i < inc.size(); ++i) {
@@ -165,8 +165,8 @@ std::string VerificationGenerator::generateMainFunction(
 }
  
 std::string VerificationGenerator::generateVerificationCode(
-    const std::vector<Node*> & sorted_nodes,
-    const std::unordered_map<Node*, std::size_t> & rho,
+    const std::vector<std::shared_ptr<Node>> & sorted_nodes,
+    const std::unordered_map<std::shared_ptr<Node>, std::size_t> & rho,
     unsigned num_registers,
     unsigned seed) {
  

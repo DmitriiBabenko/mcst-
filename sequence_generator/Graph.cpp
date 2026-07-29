@@ -16,33 +16,42 @@ public:
         _min_inits(min_count_init),
         _size(size),
         _id(id) {
-            nodes.reserve(size);
+            _nodes.reserve(size);
         }
+
     void Graph::build(std::mt19937 & gen) {
         ChooseOp random_op;
         unsigned cur_size = 0;
         while (cur_size < _min_inits) {
-            nodes.push_back(new Node(std::vector<Node*>(), cur_size, Ops::INIT));
+            std::shared_ptr<Node> new_node = std::make_shared<Node>(cur_size, Ops::INIT); 
+            _nodes.push_back(new_node);
             ++cur_size;
         }
         std::uniform_int_distribution<std::size_t> operation_selector(0, static_cast<std::size_t>(Ops::COUNT) - 1);
         while (cur_size < _size) {
             Ops op_name = static_cast<Ops>(operation_selector(gen));
             std::size_t op_arity = random_op.get_arity(op_name);
-            std::vector<Node*> sources(op_arity);
+            std::vector<std::shared_ptr<Node>> sources(op_arity);
             for (std::size_t idx = 0, source_idx = 0; idx < op_arity; ++idx) {
                 std::uniform_int_distribution<std::size_t> source_selector(source_idx, cur_size - op_arity + idx);
                 source_idx = source_selector(gen);
-                sources[idx] = nodes[source_idx];
+                sources[idx] = _nodes[source_idx];
                 ++source_idx;
             }
-            nodes.push_back(new Node(std::move(sources), cur_size, op_name));
+            std::shared_ptr<Node> new_node = std::make_shared<Node>(cur_size, op_name);
+            _nodes.push_back(new_node);
+
+            for (auto & source : sources) {
+                source->addOut(new_node);
+                new_node->addInc(source);
+            }
+
             ++cur_size;
         }
     }
 
-const std::vector<Node*> Graph::getNodes() const {
-    return nodes;
+const std::vector<std::shared_ptr<Node>> & Graph::getNodes() const {
+    return _nodes;
 }
 
 const unsigned Graph::getId() const {

@@ -1,24 +1,23 @@
 #include "Node.h"
 
-Node::Node(std::vector<Node*> && inc, std::size_t id, Ops op):
-    _inc(std::move(inc)),
+Node::Node(std::size_t id, Ops op):
     _visited(false),
     _id(id),
-    _op(op) {
-        for (auto & node : _inc) {
-            node->addOut(this);
-        }
-    }
+    _op(op) {}
 
-    void Node::addOut(Node* node) {
+    void Node::addOut(std::shared_ptr<Node> node) {
         _out.push_back(node);
     }
 
-    const std::vector<Node*>& Node::getOut() const {
+    void Node::addInc(std::shared_ptr<Node> node) {
+        _inc.push_back(node);
+    }
+
+    const std::vector<std::shared_ptr<Node>>& Node::getOut() const {
         return _out;
     }
 
-    const std::vector<Node*>& Node::getInc() const {
+    const std::vector<std::shared_ptr<Node>>& Node::getInc() const {
         return _inc;
     }
 
@@ -38,14 +37,14 @@ Node::Node(std::vector<Node*> && inc, std::size_t id, Ops op):
         return _id;
     }
 
-const Ops Node::getOp() const {
-    return _op;
-}
+    const Ops Node::getOp() const {
+        return _op;
+    }
 
     void Node::setValue(float value) {
         _value = value;
     }
 
-const float Node::getValue() const {
-    return _value;
-}
+    const float Node::getValue() const {
+        return _value;
+    }

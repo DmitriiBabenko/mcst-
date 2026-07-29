@@ -72,8 +72,8 @@ int main(const int argc, char* argv[]) {
                 return 1;
             }
         }
-        std::vector<Node*> sorted_nodes = build_secuense_nodes(components);
-        std::unordered_map<Node*, std::size_t> rho;
+        std::vector<std::shared_ptr<Node>> sorted_nodes = build_secuense_nodes(components);
+        std::unordered_map<std::shared_ptr<Node>, std::size_t> rho;
         try {
             rho = assign_registers(sorted_nodes, regs);
         } catch(std::runtime_error & e) {

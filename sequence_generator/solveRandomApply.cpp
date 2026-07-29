@@ -9,6 +9,7 @@
 #include "VerificationGenerator.h"
 #include "Jsondiskcache.h" 
 #include "Graph.h"
+#include <map>
 
 auto getOpSymbol = [](const Ops op) -> std::string {
     switch(op) {
@@ -21,10 +22,26 @@ auto getOpSymbol = [](const Ops op) -> std::string {
     }
 };
 
+std::string var_name(const Graph & graph, const std::shared_ptr<Node> & node) {
+    return std::to_string(graph.getId()) + '_' + std::to_string(node->getId());
+}
+
+void add_var_to_dependetns(const Graph & graph, std::map<std::string, z3::expr_vector> & name_to_sources, const std::shared_ptr<Node> & node, z3::context & ctx, const z3::expr & var) {
+    for (auto & dependent_node : node->getOut()) {
+        std::string name = var_name(graph, dependent_node);
+        auto it = name_to_sources.find(name);
+        if (it == name_to_sources.end()) {
+            it = name_to_sources.emplace(name, z3::expr_vector(ctx)).first;
+        }
+        it->second.push_back(var);
+    }
+}
+
 ComponentSolution generate_subsystem_of_restrictions(const Graph & graph,
                                 unsigned seed, bool show_constraints) {
     ComponentSolution solution;
     z3::context & ctx = solution.getContext();
+    std::map<std::string, z3::expr_vector> name_to_sources;
 
     z3::params p(ctx);
     p.set("random_seed", seed);
@@ -41,26 +58,18 @@ ComponentSolution generate_subsystem_of_restrictions(const Graph & graph,
     };
 
     for (std::size_t ind = 0; ind < graph.getNodes().size(); ++ind) {
-        std::string var_name = std::to_string(graph.getId()) + '_' + std::to_string(graph.getNodes()[ind]->getId());
-        z3::expr var = ctx.constant(var_name.c_str(), float32);
+        const std::shared_ptr<Node> & cur_node = graph.getNodes()[ind];
+        std::string name = var_name(graph, cur_node);
+        z3::expr var = ctx.constant(name.c_str(), float32);
 
-        if (graph.getNodes()[ind]->getOp() == Ops::INIT) {
-            add_tracker(z3::to_expr(ctx, Z3_mk_fpa_is_normal(ctx, var)), var_name + "_normal");
-        } else {
-            add_tracker(var >= ctx.fpa_val(-1000.0f), var_name + "_lb");
-            add_tracker(var <= ctx.fpa_val(1000.0f), var_name + "_ub");
-            add_tracker(var >= ctx.fpa_val(0.0001f) || var <= ctx.fpa_val(-0.0001f), var_name + "_nonzero");
-
+        z3::expr result (ctx);
+        if (cur_node->getOp() != Ops::INIT) {
             z3::expr_vector src_exprs(ctx);
-
-            for (std::size_t idx = 0; idx < graph.getNodes()[ind]->getInc().size(); ++idx) {
-                const Node * node = graph.getNodes()[ind]->getInc()[idx];
-                std::string src_name = std::to_string(graph.getId()) + '_' + std::to_string(node->getId());
-                z3::expr & src_expr = solution.local_vars.at(src_name);
-                src_exprs.push_back(src_expr);
+            for (const auto & inc_node : cur_node->getInc()) {
+                std::string src_name = var_name(graph, inc_node);
+                src_exprs.push_back(solution.local_vars.at(src_name));
             }
 
-            z3::expr result(ctx);
             switch (graph.getNodes()[ind]->getOp()) {
                 case Ops::ADD:
                     result = src_exprs[0];
@@ -88,13 +97,18 @@ ComponentSolution generate_subsystem_of_restrictions(const Graph & graph,
                     }
                 break;
                 default:
-                    std::cerr << "Error: Unknown operation in instructions " << var_name << std::endl;
+                    std::cerr << "Error: Unknown operation in instructions " << name << std::endl;
                     return solution;
             }
-            add_tracker(result == var, var_name + "_def");
+            add_tracker(result == var, name + "_def");
         }
 
-        solution.local_vars.emplace(var_name, var);
+        add_tracker(var >= ctx.fpa_val(-1000.0f), name + "_lb");
+        add_tracker(var <= ctx.fpa_val(1000.0f), name + "_ub");
+        add_tracker(var >= ctx.fpa_val(0.0001f) || var <= ctx.fpa_val(-0.0001f), name + "_nonzero");
+        add_tracker(z3::to_expr(ctx, Z3_mk_fpa_is_normal(ctx, var)), name + "_normal");
+
+        solution.local_vars.emplace(name, var);
     }
 
     if (show_constraints) {
@@ -213,10 +227,10 @@ void solve_system(std::vector<Graph> & components, std::vector<ComponentSolution
     }
 }
 
-std::vector<Node *> build_secuense_nodes(std::vector<Graph> & components) {
-    std::vector<Node *> result_secuense;
+std::vector<std::shared_ptr<Node>> build_secuense_nodes(std::vector<Graph> & components) {
+    std::vector<std::shared_ptr<Node>> result_secuense;
     for (std::size_t idx = 0; idx < components.size(); ++idx) {
-        std::vector<Node*> nodes = components[idx].getNodes();
+        std::vector<std::shared_ptr<Node>> nodes = components[idx].getNodes();
         for (std::size_t ind = 0; ind < nodes.size(); ++ind) {
             result_secuense.push_back(nodes[ind]);
         }

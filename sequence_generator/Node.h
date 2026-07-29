@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <vector>
 #include <string>
+#include <memory>
 enum class Ops {
         ADD,
         SUB,
@@ -13,10 +14,11 @@ enum class Ops {
     };
 class Node {
 public:
-    Node(std::vector<Node*> && inc, std::size_t id, Ops op);
-    void addOut(Node* node);
-    const std::vector<Node*>& getOut() const;
-    const std::vector<Node*>& getInc() const;
+    Node(std::size_t id, Ops op);
+    void addOut(std::shared_ptr<Node> node);
+    void addInc(std::shared_ptr<Node> node);
+    const std::vector<std::shared_ptr<Node>>& getOut() const;
+    const std::vector<std::shared_ptr<Node>>& getInc() const;
     void visit();
     void visit_off();
     bool visited() const;
@@ -25,8 +27,8 @@ public:
     void setValue(float value);
     const float getValue() const;
 private:
-    std::vector<Node*> _inc;
-    std::vector<Node*> _out;
+    std::vector<std::shared_ptr<Node>> _out;
+    std::vector<std::shared_ptr<Node>> _inc;
     bool _visited;
     std::size_t _id;
     Ops _op;
