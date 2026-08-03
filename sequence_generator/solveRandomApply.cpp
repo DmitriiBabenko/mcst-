@@ -252,19 +252,19 @@ void solve_system(std::vector<Graph> & components, std::vector<ComponentSolution
     }
 }
 
-std::vector<std::shared_ptr<Node>> build_secuense_nodes(std::vector<Graph> & components, const unsigned seed, const bool log) {
+std::vector<std::shared_ptr<Node>> build_secuence_nodes(std::vector<Graph> & components, const unsigned seed, const bool log) {
     if (log) {
         std::cout << "===top. sorted nodes===\n";
     }
-    std::vector<std::shared_ptr<Node>> result_secuense;
+    std::vector<std::shared_ptr<Node>> result_secuence;
     for (std::size_t idx = 0; idx < components.size(); ++idx) {
         std::vector<std::shared_ptr<Node>> nodes = components[idx].getNodes();
         for (std::size_t ind = 0; ind < nodes.size(); ++ind) {
             if (log) {
                 std::cout << '\n' << components[idx].getId() << "_" << nodes[ind]->getId() << '\n';
             }
-            result_secuense.push_back(nodes[ind]);
+            result_secuence.push_back(nodes[ind]);
         }
     }
-    return result_secuense;
+    return result_secuence;
 }

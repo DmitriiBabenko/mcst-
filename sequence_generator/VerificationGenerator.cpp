@@ -49,24 +49,9 @@ std::string VerificationGenerator::generateIncludes() {
 }
 
 std::string VerificationGenerator::generateHelperFunctions() {
-    return R"(#define EPSILON 1e-5f
-static bool float_equal(float a, float b, float isinf) {
-    if (std::isnan(a) || std::isnan(b)) {
-        return std::isnan(a) && std::isnan(b);
-    }
-
-    if (std::isinf(a) || std::isinf(b)) {
-        return (std::isinf(a) && std::isinf(b) && ((a > 0) == (b > 0)));
-    }
-    
-    if (a == 0.0f && b == 0.0f) {
-        return true;
-    } 
-    
-    uint32_t ia, ib;
-    memcpy(&ia, &a, sizeof(float));
-    memcpy(&ib, &b, sizeof(float));
-    return ia == ib;
+    return R"(
+static bool float_equal(float a, float b) {
+    return a == b;
     
     }
 
@@ -89,16 +74,16 @@ std::string VerificationGenerator::generateMainFunction(
     unsigned num_registers,
     unsigned seed) {
  
-    std::string code = "int main() {\n";
-    code += "    std::printf(\"Verification of sequence solution\\n\");\n";
-    code += "    std::printf(\"Seed: " + std::to_string(seed) + "\\n\");\n";
-    code += "    std::printf(\"Registers: " + std::to_string(num_registers) + "\\n\\n\");\n\n";
+    std::string code = "int main() {\n"
+            "    std::printf(\"Verification of sequence solution\\n\");\n"
+            "    std::printf(\"Seed: " + std::to_string(seed) + "\\n\");\n"
+            "    std::printf(\"Registers: " + std::to_string(num_registers) + "\\n\\n\");\n\n"
  
-    code += "    float registers[" + std::to_string(num_registers) + "];\n";
-    code += "    int verification_errors = 0;\n";
-    code += "    int total_checks = 0;\n\n";
+            "    float registers[" + std::to_string(num_registers) + "];\n"
+            "    int verification_errors = 0;\n"
+            "    int total_checks = 0;\n\n"
  
-    code += "    print_header(\"Executing sequence\");\n\n";
+             "    print_header(\"Executing sequence\");\n\n";
  
     for (std::shared_ptr<Node> v : sorted_nodes) {
         const std::size_t reg = rho.at(v);
@@ -122,10 +107,10 @@ std::string VerificationGenerator::generateMainFunction(
         }
  
         if (v->getOp() == Ops::DIV) {
-            code += "        if (src" + std::to_string(inc.size() - 1) + " == 0.0f) {\n";
-            code += "            print_error(\"Division by zero at node " + node_label + "\");\n";
-            code += "            return 2;\n";
-            code += "        }\n";
+            code += "        if (src" + std::to_string(inc.size() - 1) + " == 0.0f) {\n"
+                    "            print_error(\"Division by zero at node " + node_label + "\");\n"
+                    "            return 2;\n"
+                    "        }\n";
         }
  
         std::string expr = "src0";
@@ -133,33 +118,33 @@ std::string VerificationGenerator::generateMainFunction(
             expr += " " + getOperationSymbol(v->getOp()) + " src" + std::to_string(i);
         }
  
-        code += "        float result = " + expr + ";\n";
-        code += "        registers[" + std::to_string(reg) + "] = result;\n";
-        code += "        std::printf(\"" + getOperationName(v->getOp()) +
+        code += "        float result = " + expr + ";\n"
+                "        registers[" + std::to_string(reg) + "] = result;\n"
+                "        std::printf(\"" + getOperationName(v->getOp()) +
                  ": reg[%d] = %.8f  (node " + node_label + ")\\n\", " +
-                 std::to_string(reg) + ", result);\n\n";
+                 std::to_string(reg) + ", result);\n\n"
  
-        code += "        total_checks++;\n";
-        code += "        if (!float_equal(result, " + floatToFullPrecisionString(predicted) + "f, EPSILON)) {\n";
-        code += "            std::printf(\"[ERROR] Mismatch at node " + node_label +
-                 ": expected %.8f, got %.8f\\n\", " + floatToFullPrecisionString(predicted) + "f, result);\n";
-        code += "            verification_errors++;\n";
-        code += "        } else {\n";
-        code += "            print_success(\"node " + node_label + " matches\");\n";
-        code += "        }\n";
-        code += "    }\n\n";
+                "        total_checks++;\n"
+                "        if (!float_equal(result, " + floatToFullPrecisionString(predicted) + ")) {\n"
+                "            std::printf(\"[ERROR] Mismatch at node " + node_label +
+                 ": expected %.8f, got %.8f\\n\", " + floatToFullPrecisionString(predicted) + "f, result);\n"
+                "            verification_errors++;\n"
+                "        } else {\n"
+                "            print_success(\"node " + node_label + " matches\");\n"
+                "        }\n"
+                "    }\n\n";
     }
  
-    code += "    print_header(\"Verification Summary\");\n";
-    code += "    std::printf(\"Total checks performed: %d\\n\", total_checks);\n";
-    code += "    std::printf(\"Verification errors: %d\\n\", verification_errors);\n";
-    code += "    if (verification_errors == 0) {\n";
-    code += "        print_success(\"All verifications passed!\");\n";
-    code += "        return 0;\n";
-    code += "    }\n";
-    code += "    print_error(\"Verification failed\");\n";
-    code += "    return 1;\n";
-    code += "}\n";
+    code += "    print_header(\"Verification Summary\");\n"
+            "    std::printf(\"Total checks performed: %d\\n\", total_checks);\n"
+            "    std::printf(\"Verification errors: %d\\n\", verification_errors);\n"
+            "    if (verification_errors == 0) {\n"
+            "        print_success(\"All verifications passed!\");\n"
+            "        return 0;\n"
+            "    }\n"
+            "    print_error(\"Verification failed\");\n"
+            "    return 1;\n"
+            "}\n";
  
     return code;
 }

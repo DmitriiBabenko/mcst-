@@ -126,13 +126,13 @@ int main(const int argc, char* argv[]) {
     log = (logs.find('3') != std::string::npos);
 
     if (start > 3) {
-        sorted_nodes = build_secuense_nodes(components, cache._seed_3, log);
+        sorted_nodes = build_secuence_nodes(components, cache._seed_3, log);
     } else {
         if (!checkUnsignedKey(seed, "seed")) {
             return 1;
         }
         std::cout << "\nbuilding top.sort...\n";
-        sorted_nodes = build_secuense_nodes(components, seed, log);
+        sorted_nodes = build_secuence_nodes(components, seed, log);
 
         cache._seed_3 = seed;
     }
