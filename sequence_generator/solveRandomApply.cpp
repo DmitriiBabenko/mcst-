@@ -152,14 +152,29 @@ std::pair<std::size_t, std::size_t> parse_pair(const std::string & s) {
     return {first, second};
 }
 
-void apply_cached_values(std::vector<Graph> & components, const std::vector<ComponentSolution> & solutions) {
+void apply_cached_values(std::vector<Graph> & components, const std::vector<ComponentSolution> & solutions, const bool log) {
+    std::size_t comp_num = 0;
     for (const auto & solution : solutions) {
+        if (log) {
+            std::cout << "\nComponent № " << comp_num++ << " is ";
+        }
         if (!solution.is_satisfiable) {
+            if (log) {
+                std::cout << "UNSAT\n";
+            }
             continue;
         }
+
+        if (log) {
+            std::cout << "SAT\n";
+        }
+        
         for (const auto & [name, value] : solution.variable_values) {
             auto [cmd_id, nd_id] = parse_pair(name);
             components[cmd_id].getNodes()[nd_id]->setValue(value);
+            if (log) {
+                std::cout << name <<"  ==  "<< value << '\n';  
+            }
         }
     }
 }
@@ -186,7 +201,6 @@ std::vector<Graph> generate_sequense(const unsigned seed, const unsigned size, c
 std::vector<ComponentSolution> generate_system_of_restrictions(std::vector<Graph> & components, const unsigned seed, const bool sor) {
     std::vector<ComponentSolution> solutions;
 
-    std::cout << "\ngenerating system of restrictions...\n";
     solutions.reserve(components.size());
     for (unsigned i = 0; i < components.size(); ++i) {
         ComponentSolution sol = generate_subsystem_of_restrictions(components[i], seed + i, sor);
@@ -196,14 +210,17 @@ std::vector<ComponentSolution> generate_system_of_restrictions(std::vector<Graph
     return solutions;
 }
 
-void solve_system(std::vector<Graph> & components, std::vector<ComponentSolution> & system_of_restrictions) {
-    std::cout << "\nsolving system of restrictions...\n";
+void solve_system(std::vector<Graph> & components, std::vector<ComponentSolution> & system_of_restrictions, const bool log) {
     for (std::size_t idx = 0; idx < components.size(); ++idx) {
-        std::cout << "\nComponent № " << idx << " is ";
+        if (log) {
+            std::cout << "\nComponent № " << idx << " is ";
+        }
         ComponentSolution & solution = system_of_restrictions[idx];
         z3::solver & solver = solution.getSolver();
         if (z3::check_result result = solver.check(); result == z3::sat) {
-            std::cout << "SAT\n";
+            if (log) {
+                std::cout << "SAT\n";
+            }
             solution.is_satisfiable = true;
             solution.setModel(solver.get_model());
              for (const auto & [name, var] : solution.local_vars) {
@@ -211,27 +228,41 @@ void solve_system(std::vector<Graph> & components, std::vector<ComponentSolution
                 float value = fpa_to_float(solution.getModel().eval(var));
                 components[cmp_id].getNodes()[nd_id]->setValue(value);
                 solution.variable_values[name] = value;
-                std::cout << name <<"  ==  "<< value << '\n';  
+                if (log) {
+                    std::cout << name <<"  ==  "<< value << '\n';  
+                }
              }
         } else if (result == z3::unsat) {
             solution.is_satisfiable = false;
-            std::cout << "UNSAT, core:\n";
+            if (log) {
+                std::cout << "UNSAT, core:\n";
+            }
             z3::expr_vector core = solver.unsat_core();
-            for (unsigned i = 0; i < core.size(); ++i) {
-                std::cout << " " << core[i] << '\n';
+            if (log) {
+                for (unsigned i = 0; i < core.size(); ++i) {
+                    std::cout << " " << core[i] << '\n';
+                }
             }
         } else {
             solution.is_satisfiable = false;
-            std::cout << "UNKNOWN\n";
+            if (log) {
+                std::cout << "UNKNOWN\n";
+            }
         }
     }
 }
 
-std::vector<std::shared_ptr<Node>> build_secuense_nodes(std::vector<Graph> & components) {
+std::vector<std::shared_ptr<Node>> build_secuense_nodes(std::vector<Graph> & components, const unsigned seed, const bool log) {
+    if (log) {
+        std::cout << "===top. sorted nodes===\n";
+    }
     std::vector<std::shared_ptr<Node>> result_secuense;
     for (std::size_t idx = 0; idx < components.size(); ++idx) {
         std::vector<std::shared_ptr<Node>> nodes = components[idx].getNodes();
         for (std::size_t ind = 0; ind < nodes.size(); ++ind) {
+            if (log) {
+                std::cout << '\n' << components[idx].getId() << "_" << nodes[ind]->getId() << '\n';
+            }
             result_secuense.push_back(nodes[ind]);
         }
     }

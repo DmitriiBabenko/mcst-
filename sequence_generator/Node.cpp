@@ -1,9 +1,11 @@
 #include "Node.h"
 
-Node::Node(std::size_t id, Ops op):
+Node::Node(std::size_t id, std::size_t component_id, Ops op):
     _visited(false),
     _id(id),
-    _op(op) {}
+    _op(op) {
+        _name = std::to_string(component_id) + '_' + std::to_string(id);
+    }
 
     void Node::addOut(std::shared_ptr<Node> node) {
         _out.push_back(node);
@@ -47,4 +49,8 @@ Node::Node(std::size_t id, Ops op):
 
     const float Node::getValue() const {
         return _value;
+    }
+
+    const std::string Node::getName() const {
+        return _name;
     }

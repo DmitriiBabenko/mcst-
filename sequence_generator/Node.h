@@ -14,7 +14,7 @@ enum class Ops {
     };
 class Node {
 public:
-    Node(std::size_t id, Ops op);
+    Node(std::size_t id, std::size_t component_id, Ops op);
     void addOut(std::shared_ptr<Node> node);
     void addInc(std::shared_ptr<Node> node);
     const std::vector<std::shared_ptr<Node>>& getOut() const;
@@ -26,6 +26,7 @@ public:
     const Ops getOp() const;
     void setValue(float value);
     const float getValue() const;
+    const std::string getName() const;
 private:
     std::vector<std::shared_ptr<Node>> _out;
     std::vector<std::shared_ptr<Node>> _inc;
@@ -33,5 +34,6 @@ private:
     std::size_t _id;
     Ops _op;
     float _value;
+    std::string _name;
 };
 #endif //NODE_H

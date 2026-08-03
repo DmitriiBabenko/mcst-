@@ -23,7 +23,7 @@ public:
         ChooseOp random_op;
         unsigned cur_size = 0;
         while (cur_size < _min_inits) {
-            std::shared_ptr<Node> new_node = std::make_shared<Node>(cur_size, Ops::INIT); 
+            std::shared_ptr<Node> new_node = std::make_shared<Node>(cur_size, getId(), Ops::INIT); 
             _nodes.push_back(new_node);
             ++cur_size;
         }
@@ -38,7 +38,7 @@ public:
                 sources[idx] = _nodes[source_idx];
                 ++source_idx;
             }
-            std::shared_ptr<Node> new_node = std::make_shared<Node>(cur_size, op_name);
+            std::shared_ptr<Node> new_node = std::make_shared<Node>(cur_size, getId(), op_name);
             _nodes.push_back(new_node);
 
             for (auto & source : sources) {

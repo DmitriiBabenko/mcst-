@@ -4,7 +4,10 @@
 #include <stdexcept>
 #include <iostream>
 
-std::unordered_map<std::shared_ptr<Node>, std::size_t> assign_registers(const std::vector<std::shared_ptr<Node>> & sorted_nodes, std::size_t regs) {
+std::unordered_map<std::shared_ptr<Node>, std::size_t> assign_registers(const std::vector<std::shared_ptr<Node>> & sorted_nodes, const unsigned regs, const unsigned seed, const bool log) {
+    if (log) {
+        std::cout << "\n===final register assignments==\n";
+    }
     std::unordered_map<std::shared_ptr<Node>, std::size_t> rho;
 
     //positions - position of each Node v in topsort.
@@ -23,6 +26,9 @@ std::unordered_map<std::shared_ptr<Node>, std::size_t> assign_registers(const st
             last  = std::max(last, positions.at(consumer));
         }
         last_use[v] = last;
+        if (log) {
+            std::cout << '\n' << v->getName() << "'s position is " << positions[v] << " , and last position of customers is " << last_use[v] << '\n'; 
+        }
     }
 
     // release_at[i] -- is a vector of nodes whose registers can be freed
@@ -52,10 +58,10 @@ std::unordered_map<std::shared_ptr<Node>, std::size_t> assign_registers(const st
             }
         }
     }
-
-    std::cout << "\nintermediate register values...\n";
-    for (std::shared_ptr<Node> v : sorted_nodes) {
-        std::cout << "reg[" << rho.at(v) << "] = " << v->getValue() << "  (node " << v->getId() << ")\n";
-    }
+    if (log) {
+        for (std::shared_ptr<Node> v : sorted_nodes) {
+            std::cout << "\nreg[" << rho.at(v) << "] = " << v->getValue() << "  (node " << v->getId() << ")\n";
+        }
+    }   
     return rho;
 }
