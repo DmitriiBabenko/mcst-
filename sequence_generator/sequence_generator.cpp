@@ -94,10 +94,11 @@ int main(const int argc, char* argv[]) {
             }
         }
 
+        if (!cache_path_upload.empty() && current) {
+            saveCache(*current, cache_path_upload);
+        }
+
         if (end == 1) {
-            if (!cache_path_upload.empty() && current) {
-                saveCache(*current, cache_path_upload);
-            }
             return 0;
         }
 
