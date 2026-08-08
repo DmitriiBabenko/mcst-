@@ -1,18 +1,25 @@
 #ifndef GRAPH_H
 #define GRAPH_H
 #include <vector>
-#include "Node.h"
 #include <random>
+#include <string>
+enum class Ops {
+    INIT,
+    ADD,
+    MUL,
+    DIV,
+    SUB,
+    COUNT
+    };
 class Graph {
 public:
-    Graph(const unsigned seed, const unsigned size, const unsigned min_count_init, const unsigned id);
-    void build(std::mt19937 & gen);
-    const std::vector<std::shared_ptr<Node>> & getNodes() const;
-    const unsigned getId() const;
+
+    Graph(const unsigned seed, const unsigned size, const unsigned comps);
+    const std::string toDot() const;
 private:
-    const unsigned _min_inits;
-    const unsigned _size;
-    const unsigned _id;
-    std::vector<std::shared_ptr<Node>> _nodes;
+    const std::vector<Ops> _ops;
+    const std::vector<std::vector<std::size_t>> _ways;
+    const std::vector<float> _values;
+    const std::vector<std::size_t> _regs;
 };
 #endif //GRAPH_H

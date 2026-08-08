@@ -12,19 +12,9 @@ add_library(z3::libz3 UNKNOWN IMPORTED)
 
 add_executable(sequence_generator
     sequence_generator/sequence_generator.cpp
-    sequence_generator/solveRandomApply.cpp
     common_add/fpa_to_float.cpp
-    sequence_generator/Jsondiskcache.h
-    sequence_generator/ComponentSolution.h
-    sequence_generator/Jsondiskcache.cpp
-    sequence_generator/Node.h
-    sequence_generator/Node.cpp
     sequence_generator/Graph.h
     sequence_generator/Graph.cpp
-    sequence_generator/Registerallocation.h
-    sequence_generator/Registerallocation.cpp
-    sequence_generator/VerificationGenerator.h
-    sequence_generator/VerificationGenerator.cpp
 )
 
 set_target_properties(z3::libz3 PROPERTIES

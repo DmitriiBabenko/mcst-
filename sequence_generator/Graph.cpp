@@ -1,59 +1,90 @@
 #include "Graph.h"
-#include "Node.h"
 #include <random>
-class ChooseOp{
-public:
-    std::size_t get_arity(Ops op) {
+#include <set>
+#include <iostream>
+#include <string>
+    const std::size_t leftBound(const std::size_t idx, const unsigned size, const unsigned comps) {
+        return (idx / (size / comps)) * (size / comps);
+    }
+
+    const std::size_t size(const Ops & op) {
         if (op == Ops::INIT) {
             return 0;
         } else {
             return 2;
         }
     }
-};
 
-    Graph::Graph(const unsigned seed, const unsigned size, const unsigned min_count_init, const unsigned id):
-        _min_inits(min_count_init),
-        _size(size),
-        _id(id) {
-            _nodes.reserve(size);
+    const std::set<std::size_t> getSources(const std::size_t & left, const std::size_t & right, const Ops & op, std::mt19937 & gen) {
+        std::set<std::size_t> sources;
+        std::uniform_int_distribution<std::size_t> source_selector(left, right);
+        while (sources.size() < size(op)) {
+            sources.insert(source_selector(gen));
         }
+        return sources;
+    }
 
-    void Graph::build(std::mt19937 & gen) {
-        ChooseOp random_op;
-        unsigned cur_size = 0;
-        while (cur_size < _min_inits) {
-            std::shared_ptr<Node> new_node = std::make_shared<Node>(cur_size, getId(), Ops::INIT); 
-            _nodes.push_back(new_node);
-            ++cur_size;
-        }
-        std::uniform_int_distribution<std::size_t> operation_selector(0, static_cast<std::size_t>(Ops::COUNT) - 1);
-        while (cur_size < _size) {
-            Ops op_name = static_cast<Ops>(operation_selector(gen));
-            std::size_t op_arity = random_op.get_arity(op_name);
-            std::vector<std::shared_ptr<Node>> sources(op_arity);
-            for (std::size_t idx = 0, source_idx = 0; idx < op_arity; ++idx) {
-                std::uniform_int_distribution<std::size_t> source_selector(source_idx, cur_size - op_arity + idx);
-                source_idx = source_selector(gen);
-                sources[idx] = _nodes[source_idx];
-                ++source_idx;
-            }
-            std::shared_ptr<Node> new_node = std::make_shared<Node>(cur_size, getId(), op_name);
-            _nodes.push_back(new_node);
-
-            for (auto & source : sources) {
-                source->addOut(new_node);
-                new_node->addInc(source);
-            }
-
-            ++cur_size;
+    const Ops getOp(const std::size_t left, const std::size_t right, std::mt19937 & gen) {
+        if (right <= left) {
+            return Ops::INIT;
+        } else {
+            std::uniform_int_distribution<std::size_t> operation_selector(0, static_cast<std::size_t>(Ops::COUNT) - 1);
+            return static_cast<Ops>(operation_selector(gen));
         }
     }
 
-const std::vector<std::shared_ptr<Node>> & Graph::getNodes() const {
-    return _nodes;
-}
+    const std::string toStr(const Ops & op) {
+        switch(op) {
+            case Ops::INIT:
+                return "INIT";
+            case Ops::ADD:
+                return "ADD";
+            case Ops::SUB:
+                return "SUB";
+            case Ops::MUL:
+                return "MUL";
+            case Ops::DIV:
+                return "DIV";
+            default:
+                return "?";
+        }
+    }
 
-const unsigned Graph::getId() const {
-    return _id;
-}
+    const std::string Graph::toDot() const {
+        std::string dot = "digraph G {\n";
+        for (std::size_t idx = 0; idx < _ops.size(); ++idx) {
+            dot += " " + std::to_string(idx) + " [label=\"" + std::to_string(idx) + ": " + toStr(_ops[idx]) + (_values.size() > 1 ? ", val=" + std::to_string(_values[idx]) : "") +"\"];\n";
+        }
+        for (std::size_t src = 0; src < _ways.size(); ++src) {
+            for (const auto & dst : _ways[src]) {
+                dot += " " + std::to_string(src) + " -> " + std::to_string(dst) + ";\n";
+            }
+        }
+        dot += "}\n";
+        return dot;
+    }
+
+    const std::vector<Ops> buildOps(unsigned seed, unsigned size, unsigned comps) {
+        std::mt19937 gen(seed);
+        std::vector<Ops> ops;
+        ops.push_back(Ops::INIT);
+        for (std::size_t idx = 1; idx < size; ++idx) {
+            ops.push_back(getOp(leftBound(idx, size, comps), idx - 1, gen));
+        }
+        return ops;
+    }
+
+    const std::vector<std::vector<std::size_t>> buildWays(unsigned seed, unsigned size, unsigned comps, const std::vector<Ops> & ops) {
+        std::mt19937 gen(seed);
+        std::vector<std::vector<std::size_t>> ways(size);
+        for (std::size_t idx = 1; idx < size; ++idx) {
+            for (const auto & src : getSources(leftBound(idx, size, comps), idx - 1, ops[idx], gen)) {
+                ways[src].push_back(idx);
+            }
+        }
+        return ways;
+    }
+
+    Graph::Graph(const unsigned seed, const unsigned size, const unsigned comps):
+        _ops(buildOps(seed, size, comps)),
+        _ways(buildWays(seed, size, comps, _ops)){}
