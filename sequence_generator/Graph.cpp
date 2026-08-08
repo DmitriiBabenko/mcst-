@@ -3,6 +3,8 @@
 #include <set>
 #include <iostream>
 #include <string>
+#include <sstream>
+#include <iomanip>
     const std::size_t leftBound(const std::size_t idx, const unsigned size, const unsigned comps) {
         return (idx / (size / comps)) * (size / comps);
     }
@@ -50,18 +52,40 @@
         }
     }
 
-    const std::string Graph::toDot() const {
-        std::string dot = "digraph G {\n";
-        for (std::size_t idx = 0; idx < _ops.size(); ++idx) {
-            dot += " " + std::to_string(idx) + " [label=\"" + std::to_string(idx) + ": " + toStr(_ops[idx]) + (_values.size() > 1 ? ", val=" + std::to_string(_values[idx]) : "") +"\"];\n";
+    namespace {
+        std::string formatFloat(float v) {
+            std::ostringstream oss;
+            oss << std::setprecision(9) << v;
+            return oss.str();
         }
+        std::string nodeToDot(std::size_t idx, const Ops & op, std::optional<float> value) {
+            std::string line = " " + std::to_string(idx) + " [label=\"" + std::to_string(idx) + ": " + toStr(op);
+            if (value) {
+                line += " = " + formatFloat(*value);
+            }
+            line += "\"];\n";
+            return line;
+        }
+
+        std::string edgeToDot(std::size_t src, std::size_t dst) {
+            return " " + std::to_string(src) + " -> " + std::to_string(dst) + ";\n";
+        }
+    }
+
+    const std::string Graph::toDot() const {
+        std::string nodes;
+        for (std::size_t idx = 0; idx < _ops.size(); ++idx) {
+            const std::optional<float> value = hasValues() ? std::optional<float>(_values[idx]) : std::nullopt;
+            nodes += nodeToDot(idx, _ops[idx], value);
+        }
+
+        std::string edges;
         for (std::size_t src = 0; src < _ways.size(); ++src) {
             for (const auto & dst : _ways[src]) {
-                dot += " " + std::to_string(src) + " -> " + std::to_string(dst) + ";\n";
+                edges += edgeToDot(src, dst);
             }
         }
-        dot += "}\n";
-        return dot;
+        return "digraph G {\n" + nodes + edges + "}\n";
     }
 
     const std::vector<Ops> buildOps(unsigned seed, unsigned size, unsigned comps) {
@@ -88,3 +112,16 @@
     Graph::Graph(const unsigned seed, const unsigned size, const unsigned comps):
         _ops(buildOps(seed, size, comps)),
         _ways(buildWays(seed, size, comps, _ops)){}
+    
+    Graph::Graph(std::vector<Ops> ops, std::vector<std::vector<std::size_t>> ways, std::vector<float> values):
+        _ops(std::move(ops)),
+        _ways(std::move(ways)),
+        _values(std::move(values)){}
+    
+    Graph Graph::fromParts(std::vector<Ops> ops, std::vector<std::vector<std::size_t>> ways, std::vector<float> values) {
+        return Graph(std::move(ops), std::move(ways), std::move(values));
+    }
+
+    Graph Graph::withValues(std::vector<float> values) const {
+        return Graph(_ops, _ways, std::move(values));
+    }

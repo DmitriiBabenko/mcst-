@@ -3,6 +3,7 @@
 #include <vector>
 #include <random>
 #include <string>
+#include <optional>
 enum class Ops {
     INIT,
     ADD,
@@ -11,15 +12,28 @@ enum class Ops {
     SUB,
     COUNT
     };
+
+const std::string toStr(const Ops & op);
+
 class Graph {
 public:
-
     Graph(const unsigned seed, const unsigned size, const unsigned comps);
     const std::string toDot() const;
+    const std::vector<float> & values() const {
+        return _values;
+    }
+    bool hasValues() const {
+        return !_values.empty();
+    }
+    const std::vector<Ops> & ops() const {return _ops;}
+    const std::vector<std::vector<std::size_t>> & ways() const {return _ways;}
+    Graph withValues(std::vector<float> values) const;
+    static Graph fromParts(std::vector<Ops> ops, std::vector<std::vector<std::size_t>> ways, std::vector<float> values);
 private:
-    const std::vector<Ops> _ops;
-    const std::vector<std::vector<std::size_t>> _ways;
-    const std::vector<float> _values;
-    const std::vector<std::size_t> _regs;
+    Graph(std::vector<Ops> ops, std::vector<std::vector<std::size_t>> ways, std::vector<float> values); 
+    std::vector<Ops> _ops;
+    std::vector<std::vector<std::size_t>> _ways;
+    std::vector<float> _values;
+    std::vector<std::size_t> _regs;
 };
 #endif //GRAPH_H

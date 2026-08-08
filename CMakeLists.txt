@@ -15,6 +15,10 @@ add_executable(sequence_generator
     common_add/fpa_to_float.cpp
     sequence_generator/Graph.h
     sequence_generator/Graph.cpp
+    sequence_generator/Values.h
+    sequence_generator/Values.cpp
+    sequence_generator/Cache.h
+    sequence_generator/Cache.cpp
 )
 
 set_target_properties(z3::libz3 PROPERTIES
