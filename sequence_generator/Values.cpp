@@ -29,7 +29,7 @@ namespace {
     }
 }
 
-std::optional<std::vector<float>> solve(const Graph & graph, unsigned seed) {
+std::vector<float> solve(const Graph & graph, unsigned seed) {
     const auto & ops = graph.ops();
     const auto & ways = graph.ways();
     const std::size_t n = ops.size();
@@ -65,7 +65,7 @@ std::optional<std::vector<float>> solve(const Graph & graph, unsigned seed) {
     }
 
     if (solver.check() != z3::sat) {
-        return std::nullopt;
+        throw std::runtime_error("system is unsat\n");
     }
 
     z3::model model = solver.get_model();

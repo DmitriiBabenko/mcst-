@@ -70,35 +70,25 @@ namespace {
     }
 
     template <typename T, typename F>
-    auto andThen(std::optional<T> opt, F && f) -> decltype(f(*opt)) {
-        if (!opt) {
-            return std::nullopt;
-        }
-        return f(*opt);
+    auto andThen(T val, F && f) -> decltype(f(val)) {
+        return f(val);
     }
 
-    std::optional<std::string> readFile(const std::string & path) {
+    std::string readFile(const std::string & path) {
         if (path.empty()) {
-            return std::nullopt;
+            throw std::runtime_error("file path is empty");
         }
         std::ifstream in(path);
-        if (!in) {
-            return std::nullopt;
-        }
         std::stringstream buffer;
         buffer << in.rdbuf();
         return buffer.str();
     }
 
-    std::optional<json::value> parseJson(const std::string & content) {
-        try {
-            return json::parse(content);
-        } catch(const std::exception & e) {
-            return std::nullopt;
-        }
+    json::value parseJson(const std::string & content) {
+        return json::parse(content);
     }
 
-    std::optional<Graph> graphFromJson(const json::value & parsed) {
+    Graph graphFromJson(const json::value & parsed) {
         const auto & root = parsed.as_object();
         auto ops = opsFromJson(root.at("ops"));
         auto ways = waysFromJson(root.at("ways"));
@@ -117,6 +107,6 @@ void saveCache(const Graph & graph, const std::string & path) {
     out << json::serialize(root);
 }
 
-std::optional<Graph> loadCache(const std::string & path) {
+Graph loadCache(const std::string & path) {
     return andThen(andThen(readFile(path), parseJson), graphFromJson);
 }

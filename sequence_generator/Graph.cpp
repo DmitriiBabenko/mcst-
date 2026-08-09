@@ -5,6 +5,7 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
+#include <optional>
     const std::size_t leftBound(const std::size_t idx, const unsigned size, const unsigned comps) {
         return (idx / (size / comps)) * (size / comps);
     }

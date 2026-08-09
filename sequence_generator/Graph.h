@@ -3,7 +3,6 @@
 #include <vector>
 #include <random>
 #include <string>
-#include <optional>
 enum class Ops {
     INIT,
     ADD,
@@ -17,7 +16,7 @@ const std::string toStr(const Ops & op);
 
 class Graph {
 public:
-    Graph(const unsigned seed, const unsigned size, const unsigned comps);
+    Graph(const unsigned seed, const unsigned size, const unsigned comp);
     const std::string toDot() const;
     const std::vector<float> & values() const {
         return _values;
