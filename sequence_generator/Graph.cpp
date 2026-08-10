@@ -6,10 +6,6 @@
 #include <sstream>
 #include <iomanip>
 #include <optional>
-    const std::size_t leftBound(const std::size_t idx, const unsigned size, const unsigned comps) {
-        return (idx / (size / comps)) * (size / comps);
-    }
-
     const std::size_t size(const Ops & op) {
         if (op == Ops::INIT) {
             return 0;
@@ -89,30 +85,28 @@
         return "digraph G {\n" + nodes + edges + "}\n";
     }
 
-    const std::vector<Ops> buildOps(unsigned seed, unsigned size, unsigned comps) {
-        std::mt19937 gen(seed);
+    const std::vector<Ops> buildOps(std::mt19937 & gen, const unsigned size) {
         std::vector<Ops> ops;
         ops.push_back(Ops::INIT);
         for (std::size_t idx = 1; idx < size; ++idx) {
-            ops.push_back(getOp(leftBound(idx, size, comps), idx - 1, gen));
+            ops.push_back(getOp(0, idx - 1, gen));
         }
         return ops;
     }
 
-    const std::vector<std::vector<std::size_t>> buildWays(unsigned seed, unsigned size, unsigned comps, const std::vector<Ops> & ops) {
-        std::mt19937 gen(seed);
+    const std::vector<std::vector<std::size_t>> buildWays(std::mt19937 & gen, const unsigned size, const std::vector<Ops> & ops) {
         std::vector<std::vector<std::size_t>> ways(size);
         for (std::size_t idx = 1; idx < size; ++idx) {
-            for (const auto & src : getSources(leftBound(idx, size, comps), idx - 1, ops[idx], gen)) {
+            for (const auto & src : getSources(0, idx - 1, ops[idx], gen)) {
                 ways[src].push_back(idx);
             }
         }
         return ways;
     }
 
-    Graph::Graph(const unsigned seed, const unsigned size, const unsigned comps):
-        _ops(buildOps(seed, size, comps)),
-        _ways(buildWays(seed, size, comps, _ops)){}
+    Graph::Graph(std::mt19937 & gen, const unsigned size):
+        _ops(buildOps(gen, size)),
+        _ways(buildWays(gen, size, _ops)){}
     
     Graph::Graph(std::vector<Ops> ops, std::vector<std::vector<std::size_t>> ways, std::vector<float> values):
         _ops(std::move(ops)),

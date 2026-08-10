@@ -16,7 +16,7 @@ const std::string toStr(const Ops & op);
 
 class Graph {
 public:
-    Graph(const unsigned seed, const unsigned size, const unsigned comp);
+    Graph(std::mt19937 & gen, const unsigned size);
     const std::string toDot() const;
     const std::vector<float> & values() const {
         return _values;

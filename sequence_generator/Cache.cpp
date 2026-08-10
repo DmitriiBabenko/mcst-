@@ -95,18 +95,33 @@ namespace {
         auto values = root.contains("values") ? valuesFromJson(root.at("values")) : std::vector<float>{};
         return Graph::fromParts(std::move(ops), std::move(ways), std::move(values));
     }
+
+    const std::vector<Graph> vectorFromJson(const json::value & parsed) {
+        const auto & arr = parsed.as_array();
+        std::vector<Graph> graph;
+        graph.reserve(arr.size());
+        std::transform(arr.begin(), arr.end(), std::back_inserter(graph), [](const json::value & item) { return graphFromJson(item);});
+        return graph;
+    }
+
 }
 
-void saveCache(const Graph & graph, const std::string & path) {
+const json::object saveComp(const Graph & graph) {
     json::object root;
     root["ops"] = opsToJson(graph.ops());
     root["ways"] = waysToJson(graph.ways());
     root["values"] = valuesToJson(graph.values());
-
-    std::ofstream out(path);
-    out << json::serialize(root);
+    return root;
 }
 
-Graph loadCache(const std::string & path) {
-    return andThen(andThen(readFile(path), parseJson), graphFromJson);
+void saveCache(const std::vector<Graph> & graph, const std::string & path) {
+    json::array arr;
+    arr.reserve(graph.size());
+    std::transform(graph.begin(), graph.end(), std::back_inserter(arr), [](Graph g) {return saveComp(g);});
+    std::ofstream out(path);
+    out << json::serialize(arr);
+}
+
+const std::vector<Graph> loadCache(const std::string & path) {
+    return andThen(andThen(readFile(path), parseJson), vectorFromJson);
 }

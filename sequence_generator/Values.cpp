@@ -25,6 +25,8 @@ namespace {
             case Ops::DIV:
                 solver.add(!(b == ctx.fpa_val(0.0f)));
                 return a / b;
+            default:
+                throw std::runtime_error("unknown operation " + toStr(op) + '\n');
         }
     }
 }

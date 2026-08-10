@@ -7,6 +7,8 @@
 #include <vector>
 #include <functional>
 #include <cstdlib>
+#include <filesystem>
+#include <random>
 #include "Graph.h"
 #include "Values.h"
 #include "Cache.h"
@@ -21,29 +23,68 @@ struct Args {
     unsigned regs;
 };
 
-Graph runStage1(const Graph & g, const Args & args) {
-    return Graph(args.seed, args.size, args.comps);
-}
+void log(const Graph & current, const std::filesystem::path & dotsDir, const std::filesystem::path & pngDir, const std::string baseName) {
+        const std::filesystem::path dotPath = dotsDir / (baseName + ".dot");
+        const std::filesystem::path pngPath = pngDir / (baseName + ".png");
 
-Graph runStage2(const Graph & graph, const Args & args) {
-    return graph.withValues(solve(graph, args.seed));
-}
-
-void tryLog(const char & idx, const Graph & current, const std::string & logs) {
-    if (logs.find(idx) != std::string::npos) {
-        const std::string name_dot = std::string("stage") + idx + ".dot";
-        const std::string name_png = std::string("stage") + idx + ".png";
-        std::ofstream out(name_dot);
+        std::ofstream out(dotPath);
         out << current.toDot();
         out.close();
-        const std::string command = "dot -Tpng " + name_dot + " -o " + name_png; 
+
+        const std::string command = "dot -Tpng " + dotPath.string() + " -o " + pngPath.string(); 
         if (std::system(command.c_str()) != 0) {
-            throw std::runtime_error("Dot: failed to compile graph.png");
+            throw std::runtime_error("Dot: failed to compile " + pngPath.string());
+        }
+}
+
+void tryLog(const char & idx, const std::vector<Graph> & current, const std::string & logs) {
+    if (logs.find(idx) != std::string::npos) {
+        const std::filesystem::path dotsDir = "dots";
+        const std::filesystem::path pngDir = "gournal";
+        std::filesystem::create_directories(dotsDir);
+        std::filesystem::create_directories(pngDir);
+        for (std::size_t ind = 0; ind < current.size(); ++ind) {
+            const std::string baseName = std::string("stage") + idx + "component_" + std::to_string(ind);
+            log(current[ind], dotsDir, pngDir, baseName);
         }
     }
 }
 
-using Fn = std::function<Graph(const Graph & graph, const  Args & args)>;
+void tryLogError(const Graph & current) {
+    const std::filesystem::path dotsDir = "[ERROR]dots";
+    const std::filesystem::path pngDir = "[ERROR]gournal";
+    std::filesystem::create_directories(dotsDir);
+    std::filesystem::create_directories(pngDir);
+    log(current, dotsDir, pngDir, "unsat_component");
+}
+
+std::vector<Graph> runStage1(const std::vector<Graph> & g, const Args & args) {
+    std::vector<Graph> graph;
+    std::mt19937 gen(args.seed);
+    for (std::size_t idx = 0, comp_size = args.size / args.comps, rest = args.size % args.comps; idx < args.comps; ++idx, rest ^= rest) {
+        graph.push_back(Graph(gen, comp_size + rest));
+    }
+    return graph;
+}
+
+std::vector<Graph> runStage2(const std::vector<Graph> & graph, const Args & args) {
+    std::vector<Graph> new_graph;
+    const std::size_t total = graph.size();
+    std::size_t idx = 0;
+    std::transform(graph.begin(), graph.end(), std::back_inserter(new_graph), [&args, &idx, total](const Graph & item) mutable {
+        std::cout << "[" << (++idx) << "/" << total << "] solving component...\n";
+        try {
+            return item.withValues(solve(item, args.seed));
+        } catch(std::runtime_error & e) {
+            std::cerr << "watch [ERROR]gournal directory\n";
+            tryLogError(item);
+            throw;
+        }
+    });
+    return new_graph;
+}
+
+using Fn = std::function<std::vector<Graph>(const std::vector<Graph> & graph, const  Args & args)>;
 
 
 
@@ -90,7 +131,9 @@ int main(const int argc, char* argv[]) {
     const Args args{seed, size, comps, regs};
     const std::vector<Fn> functions = {runStage1, runStage2};
     const std::vector<char> chars = {'1', '2'};
-    Graph current(0, 0, 0);
+    std::mt19937  tmpgen(1);
+    std::vector<Graph> current(comps, {tmpgen, 0});
+
     try {
         if (start > 1) {
             current = loadCache(cache_path_download);
