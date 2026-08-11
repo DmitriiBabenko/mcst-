@@ -50,12 +50,12 @@ void tryLog(const char & idx, const std::vector<Graph> & current, const std::str
     }
 }
 
-void tryLogError(const Graph & current) {
+void tryLogError(const Graph & current, const std::size_t idx) {
     const std::filesystem::path dotsDir = "[ERROR]dots";
     const std::filesystem::path pngDir = "[ERROR]gournal";
     std::filesystem::create_directories(dotsDir);
     std::filesystem::create_directories(pngDir);
-    log(current, dotsDir, pngDir, "unsat_component");
+    log(current, dotsDir, pngDir, "unsat_component_" + std::to_string(idx));
 }
 
 std::vector<Graph> runStage1(const std::vector<Graph> & g, const Args & args) {
@@ -71,16 +71,15 @@ std::vector<Graph> runStage2(const std::vector<Graph> & graph, const Args & args
     std::vector<Graph> new_graph;
     const std::size_t total = graph.size();
     std::size_t idx = 0;
-    std::transform(graph.begin(), graph.end(), std::back_inserter(new_graph), [&args, &idx, total](const Graph & item) mutable {
+    for (const auto & item : graph) {
         std::cout << "[" << (++idx) << "/" << total << "] solving component...\n";
         try {
-            return item.withValues(solve(item, args.seed));
-        } catch(std::runtime_error & e) {
-            std::cerr << "watch [ERROR]gournal directory\n";
-            tryLogError(item);
-            throw;
+            new_graph.push_back(item.withValues(solve(item, args.seed)));
+        } catch(const std::runtime_error & e) {
+            std::cerr << e.what() << "watch [ERROR]gournal/ directory\n";
+            tryLogError(item, idx - 1);
         }
-    });
+    }
     return new_graph;
 }
 
