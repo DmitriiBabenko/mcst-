@@ -19,6 +19,8 @@ add_executable(sequence_generator
     sequence_generator/Values.cpp
     sequence_generator/Cache.h
     sequence_generator/Cache.cpp
+    sequence_generator/topSort.h
+    sequence_generator/topSort.cpp
 )
 
 set_target_properties(z3::libz3 PROPERTIES

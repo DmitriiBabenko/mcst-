@@ -12,6 +12,7 @@
 #include "Graph.h"
 #include "Values.h"
 #include "Cache.h"
+#include "topSort.h"
 #include <stdexcept>
 
 namespace po = boost::program_options;
@@ -83,6 +84,10 @@ std::vector<Graph> runStage2(const std::vector<Graph> & graph, const Args & args
     return new_graph;
 }
 
+const std::vector<Graph> runStage3(const std::vector<Graph> & graph, const Args & args) {
+    return topSort(graph, args.seed, false);
+}
+
 using Fn = std::function<std::vector<Graph>(const std::vector<Graph> & graph, const  Args & args)>;
 
 
@@ -128,8 +133,8 @@ int main(const int argc, char* argv[]) {
     }
 
     const Args args{seed, size, comps, regs};
-    const std::vector<Fn> functions = {runStage1, runStage2};
-    const std::vector<char> chars = {'1', '2'};
+    const std::vector<Fn> functions = {runStage1, runStage2, runStage3};
+    const std::vector<char> chars = {'1', '2', '3'};
     std::mt19937  tmpgen(1);
     std::vector<Graph> current(comps, {tmpgen, 0});
 
