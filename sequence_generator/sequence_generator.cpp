@@ -40,7 +40,7 @@ void log(const Graph & current, const std::filesystem::path & dotsDir, const std
 void tryLog(const char & idx, const std::vector<Graph> & current, const std::string & logs) {
     if (logs.find(idx) != std::string::npos) {
         const std::filesystem::path dotsDir = "dots";
-        const std::filesystem::path pngDir = "gournal";
+        const std::filesystem::path pngDir = "journal";
         std::filesystem::create_directories(dotsDir);
         std::filesystem::create_directories(pngDir);
         for (std::size_t ind = 0; ind < current.size(); ++ind) {
@@ -52,7 +52,7 @@ void tryLog(const char & idx, const std::vector<Graph> & current, const std::str
 
 void tryLogError(const Graph & current, const std::size_t idx) {
     const std::filesystem::path dotsDir = "[ERROR]dots";
-    const std::filesystem::path pngDir = "[ERROR]gournal";
+    const std::filesystem::path pngDir = "[ERROR]journal";
     std::filesystem::create_directories(dotsDir);
     std::filesystem::create_directories(pngDir);
     log(current, dotsDir, pngDir, "unsat_component_" + std::to_string(idx));
@@ -76,7 +76,7 @@ std::vector<Graph> runStage2(const std::vector<Graph> & graph, const Args & args
         try {
             new_graph.push_back(item.withValues(solve(item, args.seed)));
         } catch(const std::runtime_error & e) {
-            std::cerr << e.what() << "watch [ERROR]gournal/ directory\n";
+            std::cerr << e.what() << "watch [ERROR]journal/ directory\n";
             tryLogError(item, idx - 1);
         }
     }
@@ -100,7 +100,7 @@ int main(const int argc, char* argv[]) {
         ("comps", po::value<unsigned>(&comps)->default_value(1), "minimal number of components of tree of operations")
         ("start", po::value<unsigned>(&start)->default_value(1), "start stage")
         ("end", po::value<unsigned>(&end)->default_value(5), "end stage")
-        ("logs", po::value<std::string>(&logs)->default_value(""), "show logs in stages, for example: \"12345\"")
+        ("logs", po::value<std::string>(&logs)->default_value("12345"), "show logs in stages, for example: \"12345\"")
         ("cache-path-download", po::value<std::string>(&cache_path_download)->default_value(""), "path to download the cache")
         ("cache-path-upload", po::value<std::string>(&cache_path_upload)->default_value(""), "path to upload the cache");
 
@@ -141,6 +141,7 @@ int main(const int argc, char* argv[]) {
             current = functions[idx - 1](current, args);
             tryLog(chars[idx - 1], current, logs);
         }
+        std::cout << cache_path_upload.empty() ? "YES\n" : "NO\n";
         if(!cache_path_upload.empty()) {
             saveCache(current, cache_path_upload);
         }
