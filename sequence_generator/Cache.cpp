@@ -61,6 +61,13 @@ namespace {
         return arr;
     }
 
+    json::value regsToJson(const std::vector<std::size_t> & regs) {
+        json::array arr;
+        arr.reserve(regs.size());
+        std::transform(regs.begin(), regs.end(), std::back_inserter(arr), [](std::size_t v) {return json::value(static_cast<std::uint64_t>(v));});
+        return arr;
+    }
+
     std::vector<float> valuesFromJson(const json::value & v) {
         const auto & arr = v.as_array();
         std::vector<float> values;
@@ -93,7 +100,8 @@ namespace {
         auto ops = opsFromJson(root.at("ops"));
         auto ways = waysFromJson(root.at("ways"));
         auto values = root.contains("values") ? valuesFromJson(root.at("values")) : std::vector<float>{};
-        return Graph::fromParts(std::move(ops), std::move(ways), std::move(values));
+        auto regs = root.contains("regs") ? regsFromJson(root.at("regs")) : std::vector<std::size_t>{};
+        return Graph::fromParts(std::move(ops), std::move(ways), std::move(values), std::move(regs));
     }
 
     const std::vector<Graph> vectorFromJson(const json::value & parsed) {
@@ -110,6 +118,7 @@ const json::object saveComp(const Graph & graph) {
     json::object root;
     root["ops"] = opsToJson(graph.ops());
     root["ways"] = waysToJson(graph.ways());
+    root["regs"] = regsToJson(graph.regs());
     root["values"] = valuesToJson(graph.values());
     return root;
 }

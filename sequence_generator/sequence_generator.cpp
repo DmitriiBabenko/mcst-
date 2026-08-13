@@ -13,6 +13,7 @@
 #include "Values.h"
 #include "Cache.h"
 #include "topSort.h"
+#include "assignRegisters.h"
 #include <stdexcept>
 
 namespace po = boost::program_options;
@@ -51,12 +52,12 @@ void tryLog(const char & idx, const std::vector<Graph> & current, const std::str
     }
 }
 
-void tryLogError(const Graph & current, const std::size_t idx) {
+void tryLogError(const Graph & current, const std::size_t idx, const std::string & message) {
     const std::filesystem::path dotsDir = "[ERROR]dots";
     const std::filesystem::path pngDir = "[ERROR]journal";
     std::filesystem::create_directories(dotsDir);
     std::filesystem::create_directories(pngDir);
-    log(current, dotsDir, pngDir, "unsat_component_" + std::to_string(idx));
+    log(current, dotsDir, pngDir, message + "_component_" + std::to_string(idx));
 }
 
 std::vector<Graph> runStage1(const std::vector<Graph> & g, const Args & args) {
@@ -78,7 +79,7 @@ std::vector<Graph> runStage2(const std::vector<Graph> & graph, const Args & args
             new_graph.push_back(item.withValues(solve(item, args.seed)));
         } catch(const std::runtime_error & e) {
             std::cerr << e.what() << "watch [ERROR]journal/ directory\n";
-            tryLogError(item, idx - 1);
+            tryLogError(item, idx - 1, "failed to sat");
         }
     }
     return new_graph;
@@ -86,6 +87,23 @@ std::vector<Graph> runStage2(const std::vector<Graph> & graph, const Args & args
 
 const std::vector<Graph> runStage3(const std::vector<Graph> & graph, const Args & args) {
     return topSort(graph, args.seed, false);
+}
+
+const std::vector<Graph> runStage4(const std::vector<Graph> & components, const Args & args) {
+    std::vector<Graph> result;
+    std::mt19937 gen(args.seed);
+    for (std::size_t idx = 0; idx < components.size(); ++idx) {
+        const Graph component = components[idx];
+        try {
+            result.push_back(assignComponent(component, gen, args.regs));
+            //showResult(result.back(), log);
+        } catch(std::runtime_error & e) {
+            std::cerr << e.what() << "watch [ERROR]journal/ directory\n";
+            std::cerr << "[ERROR]|While assigning registers| In component " << std::to_string(idx) << ":\n" << e.what() << '\n';
+            tryLogError(component, idx, "failed_to_assigned_" + std::to_string(args.regs) + "_regs");
+        }
+    }
+    return result;
 }
 
 using Fn = std::function<std::vector<Graph>(const std::vector<Graph> & graph, const  Args & args)>;
@@ -104,7 +122,7 @@ int main(const int argc, char* argv[]) {
         ("regs", po::value<unsigned>(&regs)->default_value(1), "number of registers")
         ("comps", po::value<unsigned>(&comps)->default_value(1), "minimal number of components of tree of operations")
         ("start", po::value<unsigned>(&start)->default_value(1), "start stage")
-        ("end", po::value<unsigned>(&end)->default_value(5), "end stage")
+        ("end", po::value<unsigned>(&end)->default_value(4), "end stage")
         ("logs", po::value<std::string>(&logs)->default_value("12345"), "show logs in stages, for example: \"12345\"")
         ("cache-path-download", po::value<std::string>(&cache_path_download)->default_value(""), "path to download the cache")
         ("cache-path-upload", po::value<std::string>(&cache_path_upload)->default_value(""), "path to upload the cache");
@@ -133,8 +151,8 @@ int main(const int argc, char* argv[]) {
     }
 
     const Args args{seed, size, comps, regs};
-    const std::vector<Fn> functions = {runStage1, runStage2, runStage3};
-    const std::vector<char> chars = {'1', '2', '3'};
+    const std::vector<Fn> functions = {runStage1, runStage2, runStage3, runStage4};
+    const std::vector<char> chars = {'1', '2', '3', '4'};
     std::mt19937  tmpgen(1);
     std::vector<Graph> current(comps, {tmpgen, 0});
 

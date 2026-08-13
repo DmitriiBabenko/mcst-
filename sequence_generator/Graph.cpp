@@ -59,10 +59,13 @@
             oss << std::setprecision(9) << v;
             return oss.str();
         }
-        std::string nodeToDot(std::size_t idx, const Ops & op, std::optional<float> value) {
+        std::string nodeToDot(std::size_t idx, const Ops & op, const std::optional<float> & value, const std::optional<std::size_t> & reg) {
             std::string line = " " + std::to_string(idx) + " [label=\"" + std::to_string(idx) + ": " + toStr(op);
             if (value) {
-                line += " = " + formatFloat(*value);
+                line += " = " + formatFloat(*value) + ";";
+            }
+            if (reg) {
+                line += "Reg = " + std::to_string(*reg);
             }
             line += "\"];\n";
             return line;
@@ -77,7 +80,8 @@
         std::string nodes;
         for (std::size_t idx = 0; idx < _ops.size(); ++idx) {
             const std::optional<float> value = hasValues() ? std::optional<float>(_values[idx]) : std::nullopt;
-            nodes += nodeToDot(idx, _ops[idx], value);
+            const std::optional<std::size_t>  regs = hasRegs() ? std::optional<std::size_t>(_regs[idx]) : std::nullopt;
+            nodes += nodeToDot(idx, _ops[idx], value, regs);
         }
 
         std::string edges;
@@ -122,6 +126,13 @@
         _ways(std::move(ways)),
         _incoming_ways(std::move(inc_ways)),
         _values(std::move(values)){}
+
+    Graph::Graph(std::vector<Ops> ops, std::vector<std::vector<std::size_t>> ways, std::vector<std::vector<std::size_t>> inc_ways, std::vector<float> values, std::vector<std::size_t> regs):
+         _ops(std::move(ops)),
+        _ways(std::move(ways)),
+        _incoming_ways(std::move(inc_ways)),
+        _values(std::move(values)),
+        _regs(std::move(regs)){}
     
     Graph Graph::fromParts(std::vector<Ops> ops, std::vector<std::vector<std::size_t>> ways, std::vector<float> values) {
         return Graph(std::move(ops), std::move(ways), std::move(values));
@@ -141,6 +152,11 @@
         const std::vector<std::vector<std::size_t>> ways = waysFromIncWays(inc_ways);
         return Graph(std::move(ops), std::move(ways), std::move(inc_ways), std::move(values));
     }
+
     Graph Graph::withValues(std::vector<float> values) const {
         return Graph(_ops, _ways, std::move(values));
+    }
+
+    Graph Graph::withRegs(const std::vector<std::size_t> & regs) const {
+        return Graph(_ops, _ways, _incoming_ways, _values, std::move(regs));
     }
