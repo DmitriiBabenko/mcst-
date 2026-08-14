@@ -164,7 +164,6 @@ int main(const int argc, char* argv[]) {
             current = functions[idx - 1](current, args);
             tryLog(chars[idx - 1], current, logs);
         }
-        std::cout << cache_path_upload.empty() ? "YES\n" : "NO\n";
         if(!cache_path_upload.empty()) {
             saveCache(current, cache_path_upload);
         }

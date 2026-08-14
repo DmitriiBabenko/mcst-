@@ -28,13 +28,13 @@ const std::vector<std::vector<std::size_t>> buildWays(const Graph & component, s
     for (std::size_t node = 0; node < component.size(); ++node) {
         const std::vector<std::size_t> dependentNodes = component.ways()[node]; 
         for (const auto & dependentNode : dependentNodes) {
-            incWays[old_indexes[dependentNode]].push_back(old_indexes[node]);
-        } 
+            incWays[old_indexes[node]].push_back(old_indexes[dependentNode]);
+        }
     }
     return incWays;
 }
 
-Graph topSortComponent(const Graph & component, const unsigned seed) {
+const Graph topSortComponent(const Graph & component, const unsigned seed) {
     newGraph newgraph;
     std::vector<std::size_t> old_indexes(component.size());
     std::vector<bool> used(component.size(), false);
@@ -54,7 +54,7 @@ Graph topSortComponent(const Graph & component, const unsigned seed) {
         pos = newgraph.values.size() - 1 - pos;
     }
 
-    return Graph::fromPartsWithIncWays(newgraph.ops, buildWays(component, old_indexes), newgraph.values);
+    return (Graph::fromParts(newgraph.ops, buildWays(component, old_indexes))).withValues(newgraph.values);
 }
 
 const std::vector<Graph> topSort(const std::vector<Graph> & graph, const unsigned & seed, const bool & log) {

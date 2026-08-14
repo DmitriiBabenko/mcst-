@@ -76,6 +76,14 @@ namespace {
         return values;
     }
 
+    std::vector<std::size_t> regsFromJson(const json::value & v) {
+        const auto & arr = v.as_array();
+        std::vector<std::size_t> values;
+        values.reserve(arr.size());
+        std::transform(arr.begin(), arr.end(), std::back_inserter(values), [](const json::value & item) { return item.to_number<std::size_t>();});
+        return values;
+    }
+
     template <typename T, typename F>
     auto andThen(T val, F && f) -> decltype(f(val)) {
         return f(val);
@@ -99,9 +107,10 @@ namespace {
         const auto & root = parsed.as_object();
         auto ops = opsFromJson(root.at("ops"));
         auto ways = waysFromJson(root.at("ways"));
+        auto incWays = waysFromJson(root.at("incWays"));
         auto values = root.contains("values") ? valuesFromJson(root.at("values")) : std::vector<float>{};
         auto regs = root.contains("regs") ? regsFromJson(root.at("regs")) : std::vector<std::size_t>{};
-        return Graph::fromParts(std::move(ops), std::move(ways), std::move(values), std::move(regs));
+        return Graph::fromParts(std::move(ops), std::move(ways), std::move(incWays), std::move(values), std::move(regs));
     }
 
     const std::vector<Graph> vectorFromJson(const json::value & parsed) {
@@ -118,6 +127,7 @@ const json::object saveComp(const Graph & graph) {
     json::object root;
     root["ops"] = opsToJson(graph.ops());
     root["ways"] = waysToJson(graph.ways());
+    root["incWays"] = waysToJson(graph.incWays());
     root["regs"] = regsToJson(graph.regs());
     root["values"] = valuesToJson(graph.values());
     return root;
