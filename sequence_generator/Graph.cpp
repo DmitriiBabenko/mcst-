@@ -102,6 +102,16 @@
         return ops;
     }
 
+    std::vector<std::vector<std::size_t>> Graph::buildIncWays() const {
+        std::vector<std::vector<std::size_t>> incWays(size());
+        for (std::size_t idx = 0; idx < _ways.size(); ++idx) {
+            for (const auto & dist : _ways[idx]) {
+                incWays[dist].push_back(idx);
+            }
+        }
+        return incWays;
+    }
+
     const std::vector<std::vector<std::size_t>> buildWays(std::mt19937 & gen, const unsigned size, const std::vector<Ops> & ops) {
         std::vector<std::vector<std::size_t>> ways(size);
         for (std::size_t idx = 1; idx < size; ++idx) {
@@ -114,31 +124,63 @@
 
     Graph::Graph(std::mt19937 & gen, const unsigned size):
         _ops(buildOps(gen, size)),
-        _ways(buildWays(gen, size, _ops)){}
+        _ways(buildWays(gen, size, _ops)){
+            _incoming_ways = buildIncWays();
+        }
 
     Graph::Graph(std::vector<Ops> ops, std::vector<std::vector<std::size_t>> ways):
         _ops(std::move(ops)),
-        _ways(std::move(ways)){}
+        _ways(std::move(ways)){
+            _incoming_ways = buildIncWays();
+        }
 
-    Graph::Graph(std::vector<Ops> ops, std::vector<std::vector<std::size_t>> ways, std::vector<std::vector<std::size_t>> inc_ways, std::vector<float> values, std::vector<std::size_t> regs):
+    Graph::Graph(std::vector<Ops> ops, std::vector<std::vector<std::size_t>> ways, std::vector<float> values, std::vector<std::size_t> regs):
          _ops(std::move(ops)),
         _ways(std::move(ways)),
-        _incoming_ways(std::move(inc_ways)),
         _values(std::move(values)),
-        _regs(std::move(regs)){}
+        _regs(std::move(regs)){
+            _incoming_ways = buildIncWays();
+        }
     
     Graph Graph::fromParts(std::vector<Ops> ops, std::vector<std::vector<std::size_t>> ways) {
         return Graph(std::move(ops), std::move(ways));
     }
 
-    Graph Graph::fromParts(std::vector<Ops> ops, std::vector<std::vector<std::size_t>> ways, std::vector<std::vector<std::size_t>> inc_ways, std::vector<float> values, std::vector<std::size_t> regs) {
-        return Graph(std::move(ops), std::move(ways), std::move(inc_ways), std::move(values), std::move(regs));
+    Graph Graph::fromParts(std::vector<Ops> ops, std::vector<std::vector<std::size_t>> ways, std::vector<float> values, std::vector<std::size_t> regs) {
+        return Graph(std::move(ops), std::move(ways), std::move(values), std::move(regs));
     }
 
     const Graph Graph::withValues(std::vector<float> values) const {
-        return Graph(_ops, _ways, _incoming_ways, std::move(values), _regs);
+        return Graph(_ops, _ways, std::move(values), _regs);
     }
 
     const Graph Graph::withRegs(std::vector<std::size_t> regs) const {
-        return Graph(_ops, _ways, _incoming_ways, _values, std::move(regs));
+        return Graph(_ops, _ways, _values, std::move(regs));
+    }
+
+    void Graph::print(const bool & log) const {
+        if (!log) {
+            return;
+        }
+        for (std::size_t idx = 0; idx < size(); ++idx) {
+            std::cout <<"node № " << idx << " " << toStr(_ops[idx]) << "|";
+            std::cout << "incoming nodes: ";
+            if (_incoming_ways[idx].size() == 0) {
+                std::cout << " - ";
+            }
+            for (const auto & node : _incoming_ways[idx]) {
+                std::cout << node << " ";
+            }
+            std::cout << "| outgoing nodes: ";
+            if (_ways[idx].size() == 0) {
+                std::cout << " - ";
+            }
+            for (const auto & node : _ways[idx]) {
+                std::cout << node << " ";
+            }
+            if (!_regs.empty()) {
+                std::cout << "| using register № " << _regs[idx];
+            }
+            std::cout << '\n';
+        }
     }

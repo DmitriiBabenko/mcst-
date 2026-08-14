@@ -3,6 +3,7 @@
 #include <random>
 #include <algorithm>
 #include <numeric>
+#include <iostream>
 struct newGraph {
     std::vector<float> values;
     std::vector<std::vector<std::size_t>> ways;
@@ -59,8 +60,13 @@ const Graph topSortComponent(const Graph & component, const unsigned seed) {
 
 const std::vector<Graph> topSort(const std::vector<Graph> & graph, const unsigned & seed, const bool & log) {
     std::vector<Graph> result;
+    std::size_t idx = 0;
     for (const auto & component : graph) {
         result.push_back(topSortComponent(component, seed));
+        if (log) {
+            std::cout << "\n===component № " << idx++ << "===\n";
+            result.back().print(log);
+        }
     }
     return result;
 }

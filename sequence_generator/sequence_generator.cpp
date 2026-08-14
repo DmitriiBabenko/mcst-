@@ -23,6 +23,7 @@ struct Args {
     unsigned size;
     unsigned comps;
     unsigned regs;
+    std::string log;
 };
 
 void log(const Graph & current, const std::filesystem::path & dotsDir, const std::filesystem::path & pngDir, const std::string baseName) {
@@ -61,42 +62,64 @@ void tryLogError(const Graph & current, const std::size_t idx, const std::string
 }
 
 std::vector<Graph> runStage1(const std::vector<Graph> & g, const Args & args) {
+    std::cout << "======generating graph with operations======\n";
     std::vector<Graph> graph;
     std::mt19937 gen(args.seed);
+    const bool log = (args.log.find('1') != std::string::npos);
     for (std::size_t idx = 0, comp_size = args.size / args.comps, rest = args.size % args.comps; idx < args.comps; ++idx, rest ^= rest) {
+        if (log) {
+            std::cout << "===component №" << idx <<"===\n";
+        }
         graph.push_back(Graph(gen, comp_size + rest));
+        graph.back().print(log);
     }
     return graph;
 }
 
 std::vector<Graph> runStage2(const std::vector<Graph> & graph, const Args & args) {
+    std::cout << "======Geberating system of restrictions======\n";
+    const bool log = (args.log.find('2') != std::string::npos);
     std::vector<Graph> new_graph;
     const std::size_t total = graph.size();
     std::size_t idx = 0;
     for (const auto & item : graph) {
-        std::cout << "[" << (++idx) << "/" << total << "] solving component...\n";
         try {
-            new_graph.push_back(item.withValues(solve(item, args.seed)));
+            if (log) {
+                std::cout << "[" << (idx) << "/" << total << "] solving component...\n";
+            }
+            new_graph.push_back(item.withValues(solve(item, args.seed, log)));
         } catch(const std::runtime_error & e) {
             std::cerr << e.what() << "watch [ERROR]journal/ directory\n";
             tryLogError(item, idx - 1, "failed to sat");
         }
+        idx++;
     }
     return new_graph;
 }
 
 const std::vector<Graph> runStage3(const std::vector<Graph> & graph, const Args & args) {
-    return topSort(graph, args.seed, false);
+    const bool log = (args.log.find('3') != std::string::npos);
+    if (log) {
+        std::cout << "\n======Sorting ... ======\n";
+    }
+    return topSort(graph, args.seed, log);
 }
 
 const std::vector<Graph> runStage4(const std::vector<Graph> & components, const Args & args) {
     std::vector<Graph> result;
+    const bool log = (args.log.find('4') != std::string::npos);
     std::mt19937 gen(args.seed);
+    if (log) {
+        std::cout << "\n======Assigning registers======\n";
+    }
     for (std::size_t idx = 0; idx < components.size(); ++idx) {
         const Graph component = components[idx];
         try {
             result.push_back(assignComponent(component, gen, args.regs));
-            //showResult(result.back(), log);
+            if (log) {
+                std::cout << "\n===component № " << idx << "===\n";
+            }
+            result.back().print(log);
         } catch(std::runtime_error & e) {
             std::cerr << e.what() << "watch [ERROR]journal/ directory\n";
             std::cerr << "[ERROR]|While assigning registers| In component " << std::to_string(idx) << ":\n" << e.what() << '\n';
@@ -150,7 +173,7 @@ int main(const int argc, char* argv[]) {
         return 1;
     }
 
-    const Args args{seed, size, comps, regs};
+    const Args args{seed, size, comps, regs, logs};
     const std::vector<Fn> functions = {runStage1, runStage2, runStage3, runStage4};
     const std::vector<char> chars = {'1', '2', '3', '4'};
     std::mt19937  tmpgen(1);

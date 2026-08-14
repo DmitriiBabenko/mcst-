@@ -31,7 +31,7 @@ namespace {
     }
 }
 
-std::vector<float> solve(const Graph & graph, unsigned seed) {
+std::vector<float> solve(const Graph & graph, unsigned seed, const bool & log) {
     const auto & ops = graph.ops();
     const auto & ways = graph.ways();
     const std::size_t n = ops.size();
@@ -64,6 +64,10 @@ std::vector<float> solve(const Graph & graph, unsigned seed) {
             z3::expr result = applyOp(ctx, ops[idx], a, b, solver);
             solver.add(x == result);
         }
+    }
+
+    if (log) {
+        std::cout << "=== constraints ===\n" << solver << "\n==========\n";
     }
 
     if (solver.check() != z3::sat) {
