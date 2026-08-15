@@ -9,11 +9,13 @@
 #include <cstdlib>
 #include <filesystem>
 #include <random>
+#include <sys/wait.h>
 #include "Graph.h"
 #include "Values.h"
 #include "Cache.h"
 #include "topSort.h"
 #include "assignRegisters.h"
+#include "Verify.h"
 #include <stdexcept>
 
 namespace po = boost::program_options;
@@ -90,7 +92,7 @@ std::vector<Graph> runStage2(const std::vector<Graph> & graph, const Args & args
             new_graph.push_back(item.withValues(solve(item, args.seed, log)));
         } catch(const std::runtime_error & e) {
             std::cerr << e.what() << "watch [ERROR]journal/ directory\n";
-            tryLogError(item, idx - 1, "failed to sat");
+            tryLogError(item, idx - 1, "failed_to_sat");
         }
         idx++;
     }
@@ -127,6 +129,40 @@ const std::vector<Graph> runStage4(const std::vector<Graph> & components, const 
         }
     }
     return result;
+}
+
+void compileAndRunVerify(const std::filesystem::path & cPath, const std::filesystem::path & binPath) {
+    const std::string compileCmd = "gcc -std=c11 " + cPath.string() + " -o " + binPath.string() + " -lm";
+    const int compileStatus = std::system(compileCmd.c_str());
+    const std::string runCmd = binPath.string();
+    const int runStatus = std::system(runCmd.c_str());
+}
+
+const std::vector<Graph> runStage5(const std::vector<Graph> & components, const Args & args) {
+    const bool log = (args.log.find('5') != std::string::npos);
+    std::cout << "\n======Verifying against predicted results======\n";
+    const std::filesystem::path verifyDir = "verify";
+    std::filesystem::create_directories(verifyDir);
+    for (std::size_t idx = 0; idx < components.size(); ++idx) {
+        const Graph & component = components[idx];
+        const std::string baseName = "component_" + std::to_string(idx);
+        const std::filesystem::path cPath = verifyDir / (baseName + ".c");
+        const std::filesystem::path binPath = verifyDir / baseName;
+        try {
+            std::ofstream out(cPath);
+            out << toVerify(component);
+            out.close();
+            compileAndRunVerify(cPath, binPath);
+            if (log) {
+                std::cout << "===component № " << idx << "=== OK\n";
+            }
+        } catch (const std::runtime_error & e) {
+            std::cerr << e.what() << '\n';
+            std::cerr << "[ERROR]|While verifying| In component " << std::to_string(idx) << ":\n" << e.what() << '\n';
+            tryLogError(component, idx, "failed_verification");
+        }
+    }
+    return components;
 }
 
 using Fn = std::function<std::vector<Graph>(const std::vector<Graph> & graph, const  Args & args)>;
@@ -174,8 +210,8 @@ int main(const int argc, char* argv[]) {
     }
 
     const Args args{seed, size, comps, regs, logs};
-    const std::vector<Fn> functions = {runStage1, runStage2, runStage3, runStage4};
-    const std::vector<char> chars = {'1', '2', '3', '4'};
+    const std::vector<Fn> functions = {runStage1, runStage2, runStage3, runStage4, runStage5};
+    const std::vector<char> chars = {'1', '2', '3', '4', '5'};
     std::mt19937  tmpgen(1);
     std::vector<Graph> current(comps, {tmpgen, 0});
 

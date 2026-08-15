@@ -23,6 +23,8 @@ add_executable(sequence_generator
     sequence_generator/topSort.cpp
     sequence_generator/assignRegisters.h
     sequence_generator/assignRegisters.cpp
+    sequence_generator/Verify.h
+    sequence_generator/Verify.cpp
 )
 
 set_target_properties(z3::libz3 PROPERTIES
