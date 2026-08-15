@@ -177,7 +177,7 @@
     }
 
     const Graph Graph::withRegs(std::vector<std::size_t> regs) const {
-        return Graph(_ops, _ways, _values, std::move(regs));
+        return Graph(_ops, _ways, _incoming_ways, _values, std::move(regs));
     }
 
     void Graph::print(const bool & log) const {

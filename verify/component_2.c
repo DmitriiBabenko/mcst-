@@ -14,7 +14,7 @@ int main(void) {
     assert(r17 == -0x1.66ef5ep-12f);
 
     /* node 3: MUL */
-    float r14 = r19 * r17;
+    float r14 = r17 * r19;
     assert(r14 == 0x1.eb7274p-8f);
 
     /* node 4: SUB */
@@ -26,7 +26,7 @@ int main(void) {
     assert(r11 == -0x1.e9a61p-1f);
 
     /* node 6: DIV */
-    float r8 = r2 / r11;
+    float r8 = r11 / r2;
     assert(r8 == -0x1.e8cf48p-7f);
 
     /* node 7: ADD */
@@ -34,11 +34,11 @@ int main(void) {
     assert(r6 == -0x1.5e63fp+4f);
 
     /* node 8: SUB */
-    float r15 = r19 - r17;
+    float r15 = r17 - r19;
     assert(r15 == 0x1.5e8142p+4f);
 
     /* node 9: MUL */
-    float r5 = r11 * r15;
+    float r5 = r15 * r11;
     assert(r5 == -0x1.4f3422p+4f);
 
     /* node 10: DIV */
@@ -54,7 +54,7 @@ int main(void) {
     assert(r9 == 0x1.5e9e92p+4f);
 
     /* node 13: DIV */
-    float r0 = r2 / r3;
+    float r0 = r3 / r2;
     assert(r0 == 0x1.d435c4p-14f);
 
     /* node 14: MUL */
@@ -78,7 +78,7 @@ int main(void) {
     assert(r13 == 0x1.017932p-1f);
 
     /* node 19: ADD */
-    float r1 = r2 + r14;
+    float r1 = r14 + r2;
     assert(r1 == 0x1.00782ap+6f);
 
     printf("OK: all 20 nodes verified\n");

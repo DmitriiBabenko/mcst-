@@ -30,7 +30,7 @@ int main(void) {
     assert(r8 == -0x1.8a2b16p+0f);
 
     /* node 7: SUB */
-    float r2 = r16 - r8;
+    float r2 = r8 - r16;
     assert(r2 == 0x1.2321aap+0f);
 
     /* node 8: ADD */
@@ -38,11 +38,11 @@ int main(void) {
     assert(r14 == -0x1.8a2b16p+0f);
 
     /* node 9: ADD */
-    float r6 = r4 + r2;
+    float r6 = r2 + r4;
     assert(r6 == 0x1p+2f);
 
     /* node 10: DIV */
-    float r12 = r1 / r8;
+    float r12 = r8 / r1;
     assert(r12 == -0x1.01a1f2p+0f);
 
     /* node 11: DIV */
@@ -50,11 +50,11 @@ int main(void) {
     assert(r5 == -0x1.85304p+0f);
 
     /* node 12: MUL */
-    float r19 = r7 * r5;
+    float r19 = r5 * r7;
     assert(r19 == -0x1.850bf8p-12f);
 
     /* node 13: DIV */
-    float r18 = r14 / r12;
+    float r18 = r12 / r14;
     assert(r18 == 0x1.4ea60ep-1f);
 
     /* node 14: ADD */
@@ -66,7 +66,7 @@ int main(void) {
     assert(r15 == 0x1.db5528p+1f);
 
     /* node 16: SUB */
-    float r17 = r13 - r8;
+    float r17 = r8 - r13;
     assert(r17 == -0x1.8a22f8p+0f);
 
     /* node 17: MUL */
