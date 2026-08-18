@@ -3,6 +3,7 @@
 #include <z3++.h>
 #include <unordered_map>
 #include <string>
+#include <iostream>
 
 namespace {
     std::vector<std::vector<std::size_t>> invertWays(const std::vector<std::vector<std::size_t>> & ways) {

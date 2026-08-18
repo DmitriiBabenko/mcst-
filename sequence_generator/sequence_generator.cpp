@@ -133,9 +133,13 @@ const std::vector<Graph> runStage4(const std::vector<Graph> & components, const 
 
 void compileAndRunVerify(const std::filesystem::path & cPath, const std::filesystem::path & binPath) {
     const std::string compileCmd = "gcc -std=c11 " + cPath.string() + " -o " + binPath.string() + " -lm";
-    const int compileStatus = std::system(compileCmd.c_str());
+    if (std::system(compileCmd.c_str()) != 0) {
+        throw std::runtime_error("failed to compile verification file for " + binPath.string());
+    }
     const std::string runCmd = binPath.string();
-    const int runStatus = std::system(runCmd.c_str());
+    if (std::system(runCmd.c_str()) != 0) {
+        throw std::runtime_error("failed to run " + binPath.string());
+    }
 }
 
 const std::vector<Graph> runStage5(const std::vector<Graph> & components, const Args & args) {
