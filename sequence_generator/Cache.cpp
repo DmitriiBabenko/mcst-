@@ -107,9 +107,10 @@ namespace {
         const auto & root = parsed.as_object();
         auto ops = opsFromJson(root.at("ops"));
         auto ways = waysFromJson(root.at("ways"));
+        auto incWays = waysFromJson(root.at("incWays"));
         auto values = root.contains("values") ? valuesFromJson(root.at("values")) : std::vector<float>{};
         auto regs = root.contains("regs") ? regsFromJson(root.at("regs")) : std::vector<std::size_t>{};
-        return Graph::fromParts(std::move(ops), std::move(ways), std::move(values), std::move(regs));
+        return Graph(std::move(ops), std::move(ways), std::move(incWays), std::move(values), std::move(regs));
     }
 
     const std::vector<Graph> vectorFromJson(const json::value & parsed) {
