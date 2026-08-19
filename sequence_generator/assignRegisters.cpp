@@ -44,5 +44,5 @@ const Graph assignComponent(const Graph & graph, std::mt19937 & gen, const unsig
             timeToFreeReg[idx + 1].push_back(nodeToRegister[idx]);
         }
     }
-    return graph.withRegs(nodeToRegister);
+    return Graph(graph.ops(), graph.ways(), graph.incWays(), graph.values(), nodeToRegister);
 }
