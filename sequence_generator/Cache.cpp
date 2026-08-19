@@ -120,7 +120,6 @@ namespace {
         std::transform(arr.begin(), arr.end(), std::back_inserter(graph), [](const json::value & item) { return graphFromJson(item);});
         return graph;
     }
-
 }
 
 const json::object saveComp(const Graph & graph) {

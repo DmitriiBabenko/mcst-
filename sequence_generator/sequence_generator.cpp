@@ -64,7 +64,7 @@ void tryLogError(const Graph & current, const std::size_t idx, const std::string
 }
 
 std::vector<Graph> runStage1(const std::vector<Graph> & g, const Args & args) {
-    std::cout << "======generating graph with operations======\n";
+    std::cout << "======Generating graph with operations======\n";
     std::vector<Graph> graph;
     std::mt19937 gen(args.seed);
     const bool log = (args.log.find('1') != std::string::npos);
@@ -79,7 +79,7 @@ std::vector<Graph> runStage1(const std::vector<Graph> & g, const Args & args) {
 }
 
 std::vector<Graph> runStage2(const std::vector<Graph> & graph, const Args & args) {
-    std::cout << "======Geberating system of restrictions======\n";
+    std::cout << "\n======Generating system of restrictions======\n";
     const bool log = (args.log.find('2') != std::string::npos);
     std::vector<Graph> new_graph;
     const std::size_t total = graph.size();
@@ -101,9 +101,7 @@ std::vector<Graph> runStage2(const std::vector<Graph> & graph, const Args & args
 
 const std::vector<Graph> runStage3(const std::vector<Graph> & graph, const Args & args) {
     const bool log = (args.log.find('3') != std::string::npos);
-    if (log) {
-        std::cout << "\n======Sorting ... ======\n";
-    }
+    std::cout << "\n======Sorting======\n";
     return topSort(graph, args.seed, log);
 }
 
@@ -111,9 +109,7 @@ const std::vector<Graph> runStage4(const std::vector<Graph> & components, const 
     std::vector<Graph> result;
     const bool log = (args.log.find('4') != std::string::npos);
     std::mt19937 gen(args.seed);
-    if (log) {
-        std::cout << "\n======Assigning registers======\n";
-    }
+    std::cout << "\n======Assigning registers======\n";
     for (std::size_t idx = 0; idx < components.size(); ++idx) {
         const Graph component = components[idx];
         try {
@@ -186,7 +182,7 @@ int main(const int argc, char* argv[]) {
         ("comps", po::value<unsigned>(&comps)->default_value(1), "minimal number of components of tree of operations")
         ("start", po::value<unsigned>(&start)->default_value(1), "start stage")
         ("end", po::value<unsigned>(&end)->default_value(4), "end stage")
-        ("logs", po::value<std::string>(&logs)->default_value("12345"), "show logs in stages, for example: \"12345\"")
+        ("logs", po::value<std::string>(&logs)->default_value(""), "show logs in stages, for example: \"12345\"")
         ("cache-path-download", po::value<std::string>(&cache_path_download)->default_value(""), "path to download the cache")
         ("cache-path-upload", po::value<std::string>(&cache_path_upload)->default_value(""), "path to upload the cache");
 

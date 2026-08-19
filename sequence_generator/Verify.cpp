@@ -3,11 +3,11 @@
 #include <iomanip>
 #include <stdexcept>
 #include <unordered_set>
+#include <boost/lexical_cast.hpp>
 
 std::string formatFloat(float v) {
-    std::ostringstream oss;
-    oss << std::hexfloat << v << 'f';
-    return oss.str();
+    std::string suffix = (std::ceil(v) == v) ? ".0f" : "f";
+    return boost::lexical_cast<std::string>(v) + suffix;
 }
 
 char opSymbol(const Ops & op) {
