@@ -6,15 +6,6 @@
 #include <iostream>
 
 namespace {
-    std::vector<std::vector<std::size_t>> invertWays(const std::vector<std::vector<std::size_t>> & ways) {
-        std::vector<std::vector<std::size_t>> sourcesOf(ways.size());
-        for (std::size_t src = 0; src < ways.size(); ++src) {
-            for (const auto & dst : ways[src]) {
-                sourcesOf[dst].push_back(src);
-            }
-        }
-        return sourcesOf;
-    }
 
     z3::expr applyOp(z3::context & ctx, Ops op,
                         const z3::expr & a, const z3::expr & b,
@@ -45,7 +36,7 @@ std::vector<float> solve(const Graph & graph, unsigned seed, const bool & log) {
 
     const z3::sort fpaSort = ctx.fpa_sort<32>();
 
-    const std::vector<std::vector<std::size_t>> sourcesOf = invertWays(ways);
+    const std::vector<std::vector<std::size_t>> sourcesOf = graph.incWays();
 
     std::unordered_map<std::size_t, z3::expr> nodeExpr;
     nodeExpr.reserve(n);

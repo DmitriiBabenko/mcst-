@@ -112,14 +112,14 @@
         return incWays;
     }
 
-    std::vector<std::vector<std::size_t>> Graph::buildWaysFromIncWays(const std::vector<std::vector<std::size_t>> & incWays) {
-        std::vector<std::vector<std::size_t>> ways(incWays.size());
-        for (std::size_t idx = 0; idx < incWays.size(); ++idx) {
-            for (const auto & src : incWays[idx]) {
-                ways[src].push_back(idx);
+    const std::vector<std::vector<std::size_t>> reverseWays(const std::vector<std::vector<std::size_t>> & ways) {
+        std::vector<std::vector<std::size_t>> sources(ways.size());
+        for (std::size_t idx = 0; idx < ways.size(); ++idx) {
+            for (const auto & dst : ways[idx]) {
+                sources[dst].push_back(idx);
             }
         }
-        return ways;
+        return sources;
     }
 
     const std::vector<std::vector<std::size_t>> buildWays(std::mt19937 & gen, const unsigned size, const std::vector<Ops> & ops) {
@@ -207,7 +207,24 @@
         }
     }
 
-    Graph Graph::fromPartsWithIncWays(std::vector<Ops> ops, std::vector<std::vector<std::size_t>> incWays) {
-        const std::vector<std::vector<std::size_t>> ways = Graph::buildWaysFromIncWays(incWays);
-        return Graph(std::move(ops),  std::move(ways), std::move(incWays));
+    const Graph uniteGraph(const std::vector<Graph> & graphs) {
+        std::vector<Ops> ops;
+        std::vector<std::vector<std::size_t>> ways;
+        std::vector<float> values;
+        for (const auto & graph : graphs) {
+            const std::vector<Ops> srcOps = graph.ops();
+            const std::vector<float> srcValues = graph.values();
+            const std::vector<std::vector<std::size_t>> srcWays = graph.ways();
+            const std::size_t base = ways.size();
+            for (std::size_t idx = 0; idx < graph.size(); ++idx) {
+                std::vector<std::size_t> resultWays;
+                ops.push_back(srcOps[idx]);
+                values.push_back(srcValues[idx]);
+                for (const auto & dependent : srcWays[idx]) {
+                    resultWays.push_back(dependent + base);
+                }
+                ways.push_back(std::move(resultWays));
+            }
+        }
+        return (Graph::fromParts(ops, ways)).withValues(values);
     }

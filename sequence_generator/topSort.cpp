@@ -24,15 +24,14 @@ void dfs(const std::size_t & node, const Graph & component, newGraph & newgraph,
     newgraph.ops.push_back(component.ops()[node]);
 }
 
-const std::vector<std::vector<std::size_t>> buildIncWays(const Graph & component, std::vector<std::size_t> & old_indexes) {
-    std::vector<std::vector<std::size_t>> incWays(component.size());
-    for (std::size_t node = 0; node < component.size(); ++node) {
-        const std::vector<std::size_t> dependentNodes = component.ways()[node]; 
-        for (const auto & dependentNode : dependentNodes) {
-            incWays[old_indexes[dependentNode]].push_back(old_indexes[node]);
+const std::vector<std::vector<std::size_t>> recalcWays(const std::vector<std::vector<std::size_t>> & oldWays, std::vector<std::size_t> & old_indexes) {
+    std::vector<std::vector<std::size_t>> ways(oldWays.size());
+    for (std::size_t node = 0; node < oldWays.size(); ++node) {
+        for (const auto & other : oldWays[node]) {
+            ways[old_indexes[node]].push_back(old_indexes[other]);
         }
     }
-    return incWays;
+    return ways;
 }
 
 const Graph topSortComponent(const Graph & component, const unsigned seed) {
@@ -54,8 +53,7 @@ const Graph topSortComponent(const Graph & component, const unsigned seed) {
     for (auto & pos : old_indexes) {
         pos = newgraph.values.size() - 1 - pos;
     }
-
-    return (Graph::fromPartsWithIncWays(newgraph.ops, buildIncWays(component, old_indexes))).withValues(newgraph.values);
+    return (Graph(newgraph.ops, recalcWays(component.ways(), old_indexes), recalcWays(component.incWays(), old_indexes), newgraph.values, component.regs()));
 }
 
 const std::vector<Graph> topSort(const std::vector<Graph> & graph, const unsigned & seed, const bool & log) {

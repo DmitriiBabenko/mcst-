@@ -89,14 +89,15 @@ std::vector<Graph> runStage2(const std::vector<Graph> & graph, const Args & args
             if (log) {
                 std::cout << "[" << (idx) << "/" << total << "] solving component...\n";
             }
-            new_graph.push_back(item.withValues(solve(item, args.seed, log)));
+            new_graph.push_back(Graph(item.ops(), item.ways(), item.incWays(), solve(item, args.seed, log), item.regs()));
         } catch(const std::runtime_error & e) {
             std::cerr << e.what() << "watch [ERROR]journal/ directory\n";
             tryLogError(item, idx - 1, "failed_to_sat");
         }
         idx++;
     }
-    return new_graph;
+    const std::vector<Graph> united = {uniteGraph(new_graph)};
+    return united;
 }
 
 const std::vector<Graph> runStage3(const std::vector<Graph> & graph, const Args & args) {

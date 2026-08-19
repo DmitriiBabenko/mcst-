@@ -1,5 +1,4 @@
-#ifndef GRAPH_H
-#define GRAPH_H
+#pragma once
 #include <vector>
 #include <random>
 #include <string>
@@ -34,7 +33,6 @@ public:
     static Graph fromParts(std::vector<Ops> ops, std::vector<std::vector<std::size_t>> ways);
     static Graph fromPartsWithIncWays(std::vector<Ops> ops, std::vector<std::vector<std::size_t>> incWays);
     static Graph fromParts(std::vector<Ops> ops, std::vector<std::vector<std::size_t>> ways, std::vector<float> values, std::vector<std::size_t> regs);
-    static std::vector<std::vector<std::size_t>> buildWaysFromIncWays(const std::vector<std::vector<std::size_t>> & incWays);
     Graph(std::vector<Ops> ops, std::vector<std::vector<std::size_t>> ways, std::vector<std::vector<std::size_t>> incWays, std::vector<float> values, std::vector<std::size_t> regs);
 private:
     Graph(std::vector<Ops> ops, std::vector<std::vector<std::size_t>> ways);
@@ -47,4 +45,6 @@ private:
     std::vector<float> _values;
     std::vector<std::size_t> _regs;
 };
-#endif //GRAPH_H
+
+const Graph uniteGraph(const std::vector<Graph> & graphs);
+const std::vector<std::vector<std::size_t>> reverseWays(const std::vector<std::vector<std::size_t>> & ways);
