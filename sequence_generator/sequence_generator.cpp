@@ -283,6 +283,11 @@ int main(const int argc, char* argv[]) {
             current = loadCache(cache_path_download);
         }
 
+        if (start == 1 && comps > size) {
+            std::cerr << "comps must be <= size: each component needs at least 1 node\n";
+            return 1;
+        }
+
         // последовательное выполнение этапов [start, end]: результат каждого этапа передаётся в следующий
         for(std::size_t idx = start; idx <= end; ++idx) {
             current = functions[idx - 1](current, args);
