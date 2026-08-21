@@ -124,7 +124,7 @@
 
     Graph::Graph(std::mt19937 & gen, const unsigned size):
         _ops(buildOps(gen, size)),
-        _ways(buildWays(gen, size, _ops)){
+        _ways(buildWays(gen, size, _ops)) {
             _incoming_ways = reverseWays(_ways);
         }
     

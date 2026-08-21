@@ -20,6 +20,20 @@
 
 namespace po = boost::program_options;
 
+/*
+Точка входа приложения, реализующего конвейер из README (этапы 1-5): последовательный вызов 
+runStage1...runStage5 над набором графов Graph, с возможность начать/закончить на произвольном
+этапе (start/end) и подгрузить/сохранить промежуточное состояние через Cache.
+*/
+
+/*
+Параметры CLI, общие для всех этапов конвейера:
+    seed - random seed для детерминированности всех псевдослучайных операций;
+    size - суммарное число вершин |V| по всем компонентам (этап 1);
+    comps - минимальное число компонент связности (отдельных графов) (этап 1);
+    regs - число доступных регистров regs (этап 4: rho: V -> {0, ..., regs - 1});
+    log - строка с номерами этапов, для которых нужно журналировать состояние (например "12345")
+*/
 struct Args {
     unsigned seed;
     unsigned size;
@@ -151,6 +165,11 @@ const std::vector<Graph> runStage4(const std::vector<Graph> & components, const 
     return result;
 }
 
+/*
+pred: cPath - путь к сгенерированному toVerify(...) файлу .c; binPath - путь для скомпилированного бинарника
+post: компилирует cPath через gcc (стандарт C11, линковка с libm) в binPath и сразу запускает его;
+бросает std::runtime_error, если компиляция или запуск завершились ненулевым кодом
+(сам бинарник использует assert - падение assert также даёт ненулевой код возврата)*/
 void compileAndRunVerify(const std::filesystem::path & cPath, const std::filesystem::path & binPath) {
     const std::string compileCmd = "gcc -std=c11 " + cPath.string() + " -o " + binPath.string() + " -lm";
     if (std::system(compileCmd.c_str()) != 0) {
@@ -191,11 +210,22 @@ const std::vector<Graph> runStage5(const std::vector<Graph> & components, const 
     return components;
 }
 
+/*
+Единая структура для всез runStageN: принимает состояние конвейера с предыдущего этапа (или
+начальную заглушку для этапа 1) и параметры CLI, возвращает состояние после этого этапа.*/
 using Fn = std::function<std::vector<Graph>(const std::vector<Graph> & graph, const  Args & args)>;
 
-
-//pred: --help/--h
-//post выполнения подмонежства этапов из README
+/*
+pred: argv - аргументы командной строки; см. описания опций ниже (start/end реализуют README:
+        "Возможность начинать/заканчивать программу на любых этапах 1-5", по умолчанию 1-5;
+        start > 1 требует --cache-path-download - состояние графов,
+        сохранённое опцией --cache-path-upload на предыдущем запуске - см. Cache.h)
+post: код 0 при успешном выполнении всех запрошенных этапов (с возможными пропущенными "плохими"
+        компонентами внутри runStage2/4/5 - это не прерывает работу конвейера в целом); код 1 при
+        ошибке разбора аргументов, невалидном диапазоне start/end,  отсутствующем cache-path-download
+        при start>1, либо при std::runtime_error, вышедшем за пределы runStageN (не перехваченном
+        внутри соответствующего этапа); если указан --cache-path-upload, итоговое состояние (после
+        последнего выполненного этапа) сохраняется в кеш*/
 int main(const int argc, char* argv[]) {
     unsigned seed, size, regs, comps, start, end;
     std::string stage, cache_path_download, cache_path_upload, logs;
@@ -208,7 +238,7 @@ int main(const int argc, char* argv[]) {
         ("regs", po::value<unsigned>(&regs)->default_value(1), "number of registers")
         ("comps", po::value<unsigned>(&comps)->default_value(1), "minimal number of components of tree of operations")
         ("start", po::value<unsigned>(&start)->default_value(1), "start stage")
-        ("end", po::value<unsigned>(&end)->default_value(4), "end stage")
+        ("end", po::value<unsigned>(&end)->default_value(5), "end stage")
         ("logs", po::value<std::string>(&logs)->default_value(""), "show logs in stages, for example: \"12345\"")
         ("cache-path-download", po::value<std::string>(&cache_path_download)->default_value(""), "path to download the cache")
         ("cache-path-upload", po::value<std::string>(&cache_path_upload)->default_value(""), "path to upload the cache");
@@ -237,15 +267,23 @@ int main(const int argc, char* argv[]) {
     }
 
     const Args args{seed, size, comps, regs, logs};
+
+    // диспетчеризация по номеру этапа: functions[i] и chrs[i] соответствуют этапу(i + 1)
     const std::vector<Fn> functions = {runStage1, runStage2, runStage3, runStage4, runStage5};
     const std::vector<char> chars = {'1', '2', '3', '4', '5'};
+
+    //начальное состояние для этапа 1 (само не используется внутри runStage1, тоько задаёт тип/размер вектора)
     std::mt19937  tmpgen(1);
     std::vector<Graph> current(comps, {tmpgen, 0});
 
     try {
+
+        //если стартуем не с этапа 1 - подгружаем состояние конвейера, сохранённое на предыдущем запуске
         if (start > 1) {
             current = loadCache(cache_path_download);
         }
+
+        // последовательное выполнение этапов [start, end]: результат каждого этапа передаётся в следующий
         for(std::size_t idx = start; idx <= end; ++idx) {
             current = functions[idx - 1](current, args);
             tryLog(chars[idx - 1], current, logs);
