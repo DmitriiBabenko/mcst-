@@ -6,6 +6,122 @@
 #include <sstream>
 #include <iomanip>
 #include <optional>
+#include <algorithm>
+#include <map>
+
+    //сортирует множество компонент по невозрастанию
+    const std::vector<std::size_t> canon(std::vector<std::size_t> partition) {
+        std::sort(partition.begin(), partition.end(), std::greater<>{});
+        return partition;
+    }
+
+    //перечисление возможных переходов от k узлов к (k + 1) узлам:
+    //  1) добавить независимый узел
+    //  2) добавить узел в одну компоненту
+    //  3) добавить узел свзывающий разные компоненты
+    enum class TransitionKind {
+        Leaf,
+        Same,
+        Merge
+    };
+
+    //структура описывающая переход от k узлов к (k + 1) узлам
+    // target - итоговое разбиение компонент
+    // weight - количество способов построить такое разбиение
+    // src's - индексы компонент в разбиении,от которых зависит последний добавленный узел
+    struct Transition {
+        std::vector<std::size_t> _target;
+        std::size_t _weight;
+        TransitionKind _kind;
+        std::size_t _src1;
+        std::size_t _src2;
+        Transition(const std::vector<std::size_t> & partition) {
+            _target = partition;
+            _target.push_back(1);
+            _weight = 1;
+            _kind = TransitionKind::Leaf;
+        }
+
+        Transition(const std::vector<std::size_t> & partition, std::size_t src) {
+            _target = partition;
+            _target[src]++;
+            _target = canon(_target); 
+            _weight = partition[src] * (partition[src] - 1) / 2;
+            _kind = TransitionKind::Same;
+            _src1 = src;
+            _src2 = src;
+        }
+
+        Transition(const std::vector<std::size_t> & partition, std::size_t src1, std::size_t src2) {
+            std::size_t resultComp = partition[src1] + partition[src2] + 1;
+            std::vector<std::size_t> target;
+            for (std::size_t idx = 0; idx < partition.size(); ++idx) {
+                if (idx != src1 && idx != src2) {
+                    target.push_back(partition[idx]);
+                }
+            }
+            _target = target;
+            _target.push_back(resultComp);
+            _target = canon(_target);
+            _weight = partition[src1] * partition[src2];
+            _kind = TransitionKind::Merge;
+            _src1 = src1;
+            _src2 = src2;
+        }
+    };
+
+    //построить все возможные переходы из переданного разбиения
+    const std::vector<Transition> enumerateTransitions(const std::vector<std::size_t> & partition) {
+        std::vector<Transition> result;
+
+        result.push_back(Transition(partition));
+
+        for (std::size_t idx = 0; idx < partition.size(); ++idx) {
+            if (partition[idx] > 1) {
+                result.push_back(Transition(partition, idx));
+            }
+        }
+
+        for (std::size_t src1 = 0; src1 < partition.size(); ++src1) {
+            for (std::size_t src2 = src1 + 1; src2 < partition.size(); ++src2) {
+                result.push_back(Transition(partition, src1, src2));
+            }
+        }
+
+        return result; 
+    }
+
+    // dp[n][prtition] - сколькими способами можно построить граф из n узлов с разбиением на компоненты определённого размера
+    std::vector<std::map<std::vector<std::size_t>, std::size_t>> buildForwardDp(std::size_t nodeCount) {
+        std::vector<std::map<std::vector<std::size_t>, std::size_t>> dp(nodeCount + 1);
+        dp[1][{1}] = 1;
+        for (std::size_t idx = 1; idx < nodeCount; ++idx) {
+            for (const auto & [partition, count] : dp[idx]) {
+                const std::vector<Transition> transitions = enumerateTransitions(partition);
+                for (const auto & transition : transitions) {
+                    dp[idx + 1][transition._target] += count*transition._weight;
+                }
+            }
+        }
+        return dp;
+    }
+
+     std::vector<std::map<std::vector<std::size_t>, std::size_t>> buildSuffixDp(std::size_t nodeCount, const std::vector<std::map<std::vector<std::size_t>, std::size_t>> & dp) {
+        std::vector<std::map<std::vector<std::size_t>, std::size_t>> suf(nodeCount + 1);
+        suf[nodeCount][{nodeCount}] = 1;
+
+        for (std::size_t k = nodeCount - 1; k >= 1; --k) {
+            for (const auto & [partition, _] : dp[k]) {
+                std::size_t total = 0;
+                for (const auto & tr : enumerateTransitions(partition)) {
+                    total += tr._weight * suf[k + 1][tr._target];
+                }
+                suf[k][partition] = total;
+            }
+        }
+
+        return suf;
+     }
     const std::size_t size(const Ops & op) {
         if (op == Ops::INIT) {
             return 0;
@@ -127,6 +243,103 @@
         _ways(buildWays(gen, size, _ops)) {
             _incoming_ways = reverseWays(_ways);
         }
+    
+    Graph buildGraph(std::mt19937 & gen, const unsigned size) {
+        std::vector<Ops> ops(size);
+        std::vector<std::vector<std::size_t>> ways(size);
+        std::vector<std::vector<std::size_t>> sources(size);
+
+        ops[0] = Ops::INIT;
+
+        std::vector<std::map<std::vector<std::size_t>, std::size_t>> dp = buildForwardDp(size);
+        std::vector<std::map<std::vector<std::size_t>, std::size_t>> suf = buildSuffixDp(size, dp);
+
+        std::vector<std::vector<std::size_t>> components{{0}};
+        std::vector<std::size_t> partition{1};
+
+        std::uniform_int_distribution<std::size_t> opSelector(1, static_cast<std::size_t>(Ops::COUNT) - 1);
+        for (std::size_t k = 1; k < size; ++k) {
+            const std::vector<Transition> transitions = enumerateTransitions(partition);
+            std::vector<std::size_t> scores;
+            std::size_t totalScore = 0;
+            for (const auto & tr : transitions) {
+                const std::size_t score = tr._weight * suf[k + 1][tr._target];
+                scores.push_back(score);
+                totalScore += score;
+            }
+
+            std::uniform_int_distribution<std::size_t> rollDist(0, totalScore - 1);
+            const std::size_t roll = rollDist(gen);
+
+            std::size_t accumulated = 0;
+            std::size_t chooseIdx = 0;
+            for (std::size_t idx = 0; idx < transitions.size(); ++idx) {
+                accumulated += scores[idx];
+                if (roll < accumulated) {
+                    chooseIdx = idx;
+                    break;
+                }
+            }
+            const Transition & chosen = transitions[chooseIdx];
+
+            if (chosen._kind == TransitionKind::Leaf) {
+                ops[k] = Ops::INIT;
+                components.push_back({k});
+            } else {
+                std::vector<std::size_t> & compA = components[chosen._src1];
+                std::size_t i, j;
+                if (chosen._kind == TransitionKind::Same) {
+                    std::uniform_int_distribution<std::size_t> fisrtSel(0, compA.size() - 1);
+                    const std::size_t fisrtIdx = fisrtSel(gen);
+                    std::uniform_int_distribution<std::size_t> secondSel(0, compA.size() - 2);
+                    std::size_t secondIdx = secondSel(gen);
+                    if (secondIdx == fisrtIdx) {
+                        ++secondIdx;
+                    }
+                    i = compA[fisrtIdx];
+                    j = compA[secondIdx];
+                } else {
+                    std::vector<std::size_t> & compB = components[chosen._src2];
+                    std::uniform_int_distribution<std::size_t> selA(0, compA.size() - 1);
+                    std::uniform_int_distribution<std::size_t> selB(0, compB.size() - 1);
+                    i = compA[selA(gen)];
+                    j = compB[selB(gen)];
+                }
+
+                ops[k] = static_cast<Ops>(opSelector(gen));
+                ways[i].push_back(k);
+                ways[j].push_back(k);
+                sources[k].push_back(i);
+                sources[k].push_back(j);
+
+                if (chosen._kind == TransitionKind::Same) {
+                    compA.push_back(k);
+                } else {
+                    std::vector<std::size_t> & compB = components[chosen._src2];
+                    std::vector<std::size_t> merged = compA;
+                    merged.insert(merged.end(), compB.begin(), compB.end());
+                    merged.push_back(k);
+
+                    const std::size_t first = std::max(chosen._src1, chosen._src2);
+                    const std::size_t second = std::min(chosen._src1, chosen._src2);
+
+                    components.erase(components.begin() + first);
+                    components.erase(components.begin() + second);
+                    components.push_back(merged);
+                }
+            }
+
+            std::stable_sort(components.begin(), components.end(), 
+                                [](const auto & lhs, const auto & rhs) {
+                                    return lhs.size() > rhs.size();
+                                });
+            partition.clear();
+            for (const auto & component : components) {
+                partition.push_back(component.size());
+            }   
+        }
+        return Graph(ops, ways, sources, {}, {});
+    }
     
     Graph::Graph(const std::vector<Ops> & ops,
                 const std::vector<std::vector<std::size_t>> & ways,

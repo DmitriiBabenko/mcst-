@@ -95,3 +95,9 @@ const Graph uniteGraph(const std::vector<Graph> & graphs);
 // post: deg-(v) для каждой вершины v - обращённые рёбра (кто ведёт в v); используется для получения
 //      incWays графа (операнда каждой вершиы) по известным ways 
 const std::vector<std::vector<std::size_t>> reverseWays(const std::vector<std::vector<std::size_t>> & ways);
+
+    // строит равновероятный связный ориентированный граф зависимостей размера size
+    //pred: gen - псевдослучайный генератор детерминированный от seed, size - число вершин |V|
+    //post: граф зависимостей F=(V,E), детерминированный от seed, |V|=size
+    //строит ops, ways, incWays; values и regs пусты 
+Graph buildGraph(std::mt19937 & gen, const unsigned size);

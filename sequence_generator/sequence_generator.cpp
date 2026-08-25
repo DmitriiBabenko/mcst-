@@ -99,7 +99,7 @@ std::vector<Graph> runStage1(const std::vector<Graph> & g, const Args & args) {
         if (log) {
             std::cout << "===component №" << idx <<"===\n";
         }
-        graph.push_back(Graph(gen, comp_size + rest));
+        graph.push_back(buildGraph(gen, comp_size + rest));
         graph.back().print(log);
     }
     return graph;
