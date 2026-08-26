@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <map>
 #include <numeric>
+#include "Cache.h"
 
     //сортирует множество компонент по невозрастанию
     const std::vector<std::size_t> canon(std::vector<std::size_t> partition) {
@@ -94,16 +95,22 @@
 
     // dp[n][prtition] - сколькими способами можно построить граф из n узлов с разбиением на компоненты определённого размера
     std::vector<std::map<std::vector<std::size_t>, std::size_t>> buildForwardDp(std::size_t nodeCount) {
-        std::vector<std::map<std::vector<std::size_t>, std::size_t>> dp(nodeCount + 1);
+        
+        std::vector<std::map<std::vector<std::size_t>, std::size_t>> dp = loadDp("forwardDp.json");
+        std::size_t from = dp.size();
+        if (from < nodeCount + 1) {
+            dp.resize(nodeCount + 1);
+        }
         dp[1][{1}] = 1;
-        for (std::size_t idx = 1; idx < nodeCount; ++idx) {
+        for (std::size_t idx = from; idx < nodeCount; ++idx) {
             for (const auto & [partition, count] : dp[idx]) {
                 const std::vector<Transition> transitions = enumerateTransitions(partition);
                 for (const auto & transition : transitions) {
-                    dp[idx + 1][transition._target] += count*transition._weight;
+                    dp[idx + 1][transition._target] += count * transition._weight;
                 }
             }
         }
+        saveDpCache(dp, "forwardDp.json");
         return dp;
     }
 

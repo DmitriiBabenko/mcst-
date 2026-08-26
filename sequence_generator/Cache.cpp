@@ -5,6 +5,7 @@
 #include <iterator>
 #include <sstream>
 #include <stdexcept>
+#include <filesystem>
 
 namespace json = boost::json;
 
@@ -120,6 +121,48 @@ namespace {
         std::transform(arr.begin(), arr.end(), std::back_inserter(graph), [](const json::value & item) { return graphFromJson(item);});
         return graph;
     }
+
+    json::value saveMap(const std::map<std::vector<std::size_t>, std::size_t> & map) {
+    json::array arr;
+    arr.reserve(map.size());
+    for (const auto & [key, value] : map) {
+        json::array keyArr;
+        keyArr.reserve(key.size());
+        std::transform(key.begin(), key.end(), std::back_inserter(keyArr), [](std::size_t x) {return json::value(x); });
+        json::object entry;
+        entry["key"] = keyArr;
+        entry["value"] = value;
+        arr.push_back(entry);
+    }
+    return arr;
+}
+
+std::map<std::vector<std::size_t>, std::size_t> mapFromJson(const json::value & mapVal) {
+    const json::array & entries = mapVal.as_array();
+    std::map<std::vector<std::size_t>, std::size_t> result;
+
+    for (const auto & entryVal : entries) {
+        const json::object & entry = entryVal.as_object();
+        const json::array & keyArr = entry.at("key").as_array();
+
+        std::vector<std::size_t> key;
+        key.reserve(keyArr.size());
+        std::transform(keyArr.begin(), keyArr.end(), std::back_inserter(key), [](const json::value & v) {return v.to_number<std::size_t>();});
+        std::size_t value = entry.at("value").to_number<std::size_t>();
+        result.emplace(key, value);
+    }
+
+    return result;
+}
+
+    std::vector<std::map<std::vector<std::size_t>, std::size_t>> dpFromJson(const json::value & parsed) {
+        const auto & arr = parsed.as_array();
+        std::vector<std::map<std::vector<std::size_t>, std::size_t>> result;
+        result.reserve(arr.size());
+        std::transform(arr.begin(), arr.end(), std::back_inserter(result), [](const json::value & item) { return mapFromJson(item);});
+        return result;
+    }
+
 }
 
 const json::object saveComp(const Graph & graph) {
@@ -135,11 +178,26 @@ const json::object saveComp(const Graph & graph) {
 void saveCache(const std::vector<Graph> & graph, const std::string & path) {
     json::array arr;
     arr.reserve(graph.size());
-    std::transform(graph.begin(), graph.end(), std::back_inserter(arr), [](Graph g) {return saveComp(g);});
+    std::transform(graph.begin(), graph.end(), std::back_inserter(arr), [](const Graph & g) {return saveComp(g);});
+    std::ofstream out(path);
+    out << json::serialize(arr);
+}
+
+void saveDpCache(const std::vector<std::map<std::vector<std::size_t>, std::size_t>> & dp, const std::string & path) {
+    json::array arr;
+    arr.reserve(dp.size());
+    std::transform(dp.begin(), dp.end(), std::back_inserter(arr), [](const std::map<std::vector<std::size_t>, std::size_t> & map) {return saveMap(map);});
     std::ofstream out(path);
     out << json::serialize(arr);
 }
 
 const std::vector<Graph> loadCache(const std::string & path) {
     return andThen(andThen(readFile(path), parseJson), vectorFromJson);
+}
+
+std::vector<std::map<std::vector<std::size_t>, std::size_t>> loadDp(const std::string & path) {
+    if (!std::filesystem::exists(path)) {
+        return {};
+    }
+    return andThen(andThen(readFile(path), parseJson), dpFromJson);
 }

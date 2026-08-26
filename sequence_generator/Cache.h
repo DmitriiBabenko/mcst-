@@ -3,6 +3,7 @@
 //
 #pragma once
 #include <string>
+#include <map>
 #include "Graph.h"
 /*
 Реализует возможность кешировать состояние набора графов (ops/ways/incWays/values/regs) на диск
@@ -12,8 +13,13 @@ pred: graph - набор валидных графов, path - валидный 
 post: создаёт json содержащий std::vector<Graph> в директории по указанному пути 
 */
 void saveCache(const std::vector<Graph> & graph, const std::string & path);
+
+
+void saveDpCache(const std::vector<std::map<std::vector<std::size_t>, std::size_t>> & dp, const std::string & path);
 /*
 pred: path - валидный путь к json файлу; example name.json; в файле по заданному пути - набор валидных графов
 post: набор валидных графов, эквивалентных содержащимся по заданному пути 
 */
 const std::vector<Graph> loadCache(const std::string & path);
+
+std::vector<std::map<std::vector<std::size_t>, std::size_t>> loadDp(const std::string & path);
