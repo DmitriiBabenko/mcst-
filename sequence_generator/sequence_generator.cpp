@@ -114,11 +114,11 @@ std::vector<Graph> runStage2(const std::vector<Graph> & graph, const Args & args
     const bool log = (args.log.find('2') != std::string::npos);
     std::vector<Graph> new_graph;
     const std::size_t total = graph.size();
-    std::size_t idx = 0;
+    std::size_t idx = 1;
     for (const auto & item : graph) {
         try {
             if (log) {
-                std::cout << "[" << (idx) << "/" << total << "] solving component...\n";
+                std::cout << "[" << (idx - 1) << "/" << total << "] solving component...\n";
             }
             new_graph.push_back(Graph(item.ops(), item.ways(), item.incWays(), solve(item, args.seed, log), item.regs()));
         } catch(const std::runtime_error & e) {
