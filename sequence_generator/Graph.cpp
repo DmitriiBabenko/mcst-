@@ -8,6 +8,7 @@
 #include <optional>
 #include <algorithm>
 #include <map>
+#include <numeric>
 
     //сортирует множество компонент по невозрастанию
     const std::vector<std::size_t> canon(std::vector<std::size_t> partition) {
@@ -244,6 +245,76 @@
             _incoming_ways = reverseWays(_ways);
         }
     
+    const std::vector<std::size_t> evalSores(const std::vector<std::size_t> & partition, const std::map<std::vector<std::size_t>, std::size_t> & map) {
+        const std::vector<Transition> transitions = enumerateTransitions(partition);
+        std::vector<std::size_t> scores;
+        for (const auto & tr : transitions) {
+            std::size_t sufScore = (map.find(tr._target) != map.end()) ? map.at(tr._target) : 0;
+            const std::size_t score = tr._weight * sufScore;
+            scores.push_back(score);
+        }
+        return scores;
+    }
+
+    const Transition chooseWay(const std::vector<Transition> & transitions, std::mt19937 & gen, const std::vector<std::size_t> & scores) {
+        std::uniform_int_distribution<std::size_t> rollDist(0, std::reduce(scores.begin(), scores.end()) - 1);
+        const std::size_t roll = rollDist(gen);
+
+        std::size_t accumulated = 0;
+        for (std::size_t idx = 0; idx < transitions.size(); ++idx) {
+            accumulated += scores[idx];
+            if (roll < accumulated) {
+                return transitions[idx];
+            }
+        }
+        return transitions.back();
+    }
+
+    const std::pair<std::size_t, std::size_t> chooseSources(const Transition & chosen, const std::vector<std::vector<std::size_t>> & components, std::mt19937 & gen) {
+        const std::vector<std::size_t> compA = components[chosen._src1];
+        if (chosen._kind == TransitionKind::Same) {
+            std::uniform_int_distribution<std::size_t> fisrtSel(0, compA.size() - 1);
+            std::uniform_int_distribution<std::size_t> secondSel(0, compA.size() - 2);
+            const std::size_t fisrtIdx = fisrtSel(gen);
+            std::size_t secondIdx = secondSel(gen);
+            if (secondIdx == fisrtIdx) {
+                ++secondIdx;
+            }
+            return {compA[fisrtIdx], compA[secondIdx]};
+        } else {
+            const std::vector<std::size_t> compB = components[chosen._src2];
+            std::uniform_int_distribution<std::size_t> selA(0, compA.size() - 1);
+            std::uniform_int_distribution<std::size_t> selB(0, compB.size() - 1);
+            return {compA[selA(gen)], compB[selB(gen)]};
+        }
+    }
+
+    std::vector<std::vector<std::size_t>> updateComponents(const std::vector<std::vector<std::size_t>> & oldComponents, const Transition & chosen, std::size_t k) {
+        std::vector<std::vector<std::size_t>> components = oldComponents;
+        std::vector<std::size_t> & compA = components[chosen._src1];
+        if (chosen._kind == TransitionKind::Same) {
+            compA.push_back(k);
+        } else {
+            std::vector<std::size_t> & compB = components[chosen._src2];
+            std::vector<std::size_t> merged = compA;
+            merged.insert(merged.end(), compB.begin(), compB.end());
+            merged.push_back(k);
+
+            const std::size_t first = std::max(chosen._src1, chosen._src2);
+            const std::size_t second = std::min(chosen._src1, chosen._src2);
+
+            components.erase(components.begin() + first);
+            components.erase(components.begin() + second);
+            components.push_back(merged);
+        }
+
+        std::stable_sort(components.begin(), components.end(), 
+            [](const auto & lhs, const auto & rhs) {
+                return lhs.size() > rhs.size();
+        });
+        return components;
+    }
+
     Graph buildGraph(std::mt19937 & gen, const unsigned size) {
         std::vector<Ops> ops(size);
         std::vector<std::vector<std::size_t>> ways(size);
@@ -251,8 +322,8 @@
 
         ops[0] = Ops::INIT;
 
-        std::vector<std::map<std::vector<std::size_t>, std::size_t>> dp = buildForwardDp(size);
-        std::vector<std::map<std::vector<std::size_t>, std::size_t>> suf = buildSuffixDp(size, dp);
+        const std::vector<std::map<std::vector<std::size_t>, std::size_t>> dp = buildForwardDp(size);
+        const std::vector<std::map<std::vector<std::size_t>, std::size_t>> suf = buildSuffixDp(size, dp);
 
         std::vector<std::vector<std::size_t>> components{{0}};
         std::vector<std::size_t> partition{1};
@@ -260,79 +331,21 @@
         std::uniform_int_distribution<std::size_t> opSelector(1, static_cast<std::size_t>(Ops::COUNT) - 1);
         for (std::size_t k = 1; k < size; ++k) {
             const std::vector<Transition> transitions = enumerateTransitions(partition);
-            std::vector<std::size_t> scores;
-            std::size_t totalScore = 0;
-            for (const auto & tr : transitions) {
-                const std::size_t score = tr._weight * suf[k + 1][tr._target];
-                scores.push_back(score);
-                totalScore += score;
-            }
-
-            std::uniform_int_distribution<std::size_t> rollDist(0, totalScore - 1);
-            const std::size_t roll = rollDist(gen);
-
-            std::size_t accumulated = 0;
-            std::size_t chooseIdx = 0;
-            for (std::size_t idx = 0; idx < transitions.size(); ++idx) {
-                accumulated += scores[idx];
-                if (roll < accumulated) {
-                    chooseIdx = idx;
-                    break;
-                }
-            }
-            const Transition & chosen = transitions[chooseIdx];
+            const std::vector<std::size_t> scores = evalSores(partition, suf[k+1]);
+            const Transition & chosen = chooseWay(transitions, gen, scores);
 
             if (chosen._kind == TransitionKind::Leaf) {
                 ops[k] = Ops::INIT;
                 components.push_back({k});
             } else {
-                std::vector<std::size_t> & compA = components[chosen._src1];
-                std::size_t i, j;
-                if (chosen._kind == TransitionKind::Same) {
-                    std::uniform_int_distribution<std::size_t> fisrtSel(0, compA.size() - 1);
-                    const std::size_t fisrtIdx = fisrtSel(gen);
-                    std::uniform_int_distribution<std::size_t> secondSel(0, compA.size() - 2);
-                    std::size_t secondIdx = secondSel(gen);
-                    if (secondIdx == fisrtIdx) {
-                        ++secondIdx;
-                    }
-                    i = compA[fisrtIdx];
-                    j = compA[secondIdx];
-                } else {
-                    std::vector<std::size_t> & compB = components[chosen._src2];
-                    std::uniform_int_distribution<std::size_t> selA(0, compA.size() - 1);
-                    std::uniform_int_distribution<std::size_t> selB(0, compB.size() - 1);
-                    i = compA[selA(gen)];
-                    j = compB[selB(gen)];
-                }
-
+                const auto [src1, src2] = chooseSources(chosen, components, gen);
                 ops[k] = static_cast<Ops>(opSelector(gen));
-                ways[i].push_back(k);
-                ways[j].push_back(k);
-                sources[k].push_back(i);
-                sources[k].push_back(j);
-
-                if (chosen._kind == TransitionKind::Same) {
-                    compA.push_back(k);
-                } else {
-                    std::vector<std::size_t> & compB = components[chosen._src2];
-                    std::vector<std::size_t> merged = compA;
-                    merged.insert(merged.end(), compB.begin(), compB.end());
-                    merged.push_back(k);
-
-                    const std::size_t first = std::max(chosen._src1, chosen._src2);
-                    const std::size_t second = std::min(chosen._src1, chosen._src2);
-
-                    components.erase(components.begin() + first);
-                    components.erase(components.begin() + second);
-                    components.push_back(merged);
-                }
+                ways[src1].push_back(k);
+                ways[src2].push_back(k);
+                sources[k].push_back(src1);
+                sources[k].push_back(src2);
+                components = updateComponents(components, chosen, k);
             }
-
-            std::stable_sort(components.begin(), components.end(), 
-                                [](const auto & lhs, const auto & rhs) {
-                                    return lhs.size() > rhs.size();
-                                });
             partition.clear();
             for (const auto & component : components) {
                 partition.push_back(component.size());
