@@ -201,20 +201,40 @@
     }
 
     const std::string Graph::toDot() const {
-        std::string nodes;
+        std::string nodes = " 0";
+        for (std::size_t idx = 1; idx < _ops.size(); ++idx) {
+            nodes += (" -> " + std::to_string(idx));
+        }
+        nodes += " [style=invis];\n\n";
         for (std::size_t idx = 0; idx < _ops.size(); ++idx) {
             const std::optional<float> value = hasValues() ? std::optional<float>(_values[idx]) : std::nullopt;
             const std::optional<std::size_t>  regs = hasRegs() ? std::optional<std::size_t>(_regs[idx]) : std::nullopt;
             nodes += nodeToDot(idx, _ops[idx], value, regs);
         }
 
-        std::string edges;
+        std::string edges = "edge [\nconstraint=false];\n";
         for (std::size_t src = 0; src < _ways.size(); ++src) {
             for (const auto & dst : _ways[src]) {
+                char port = (dst - src > 4) ? 'e' : 'w';
                 edges += edgeToDot(src, dst);
             }
         }
-        return "digraph G {\n" + nodes + edges + "}\n";
+
+        std::string header = 
+        "digraph G {\n"
+        "  graph [\n"
+        "    splines=polyline,\n"
+        "    ranksep=0.8,\n"
+        "    nodesep=2.0\n"
+        "  ];\n"
+        "  node [\n"
+        "    shape=box,\n"
+        "    style=\"rounded\",\n"
+        "    width=2.2,\n"
+        "    height=0.4\n"
+        "  ];\n\n";
+    
+        return header + nodes + edges + "}\n";
     }
 
     const std::vector<Ops> buildOps(std::mt19937 & gen, const unsigned size) {
