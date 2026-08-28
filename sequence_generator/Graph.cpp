@@ -258,14 +258,17 @@
             } else if (directions[{src, dst}] < 0) {
                 way = -216;
             }
-            edgePos.push_back({coords[dst].first + way, coords[dst].second});
-            edgePos.push_back({coords[src].first + way, coords[src].second});
-            edgePos.push_back({coords[src].first + way + directions[{src, dst}] * 10, coords[src].second});
-            const std::size_t delta = (coords[src].second - coords[dst].second) / 6;
-            for (std::size_t idx = 0; idx <= 6; ++idx) {
-                edgePos.push_back({coords[src].first + way + directions[{src, dst}] * 10, coords[src].second - delta * idx});
-            }
-            edgePos.push_back({coords[dst].first + way + directions[{src, dst}], coords[dst].second});
+            edgePos.push_back({coords[dst].first + way, coords[dst].second + 18});
+            edgePos.push_back({coords[src].first + way, coords[src].second - 18});
+            edgePos.push_back({coords[src].first + way, coords[src].second - 18});
+            edgePos.push_back({coords[src].first + way, coords[src].second - 18});
+            edgePos.push_back({coords[src].first + way + directions[{src, dst}] * 10, coords[src].second - 18});
+            edgePos.push_back({coords[src].first + way + directions[{src, dst}] * 10, coords[src].second - 18});
+            edgePos.push_back({coords[dst].first + way + directions[{src, dst}] * 10, coords[dst].second + 18});
+            edgePos.push_back({coords[dst].first + way + directions[{src, dst}] * 10, coords[dst].second + 18});
+            edgePos.push_back({coords[dst].first + way + directions[{src, dst}] * 10, coords[dst].second + 18});
+            edgePos.push_back({coords[dst].first + way + directions[{src, dst}] * 10, coords[dst].second + 18});
+            edgePos.push_back({coords[dst].first + way + way/216, coords[dst].second + 18});
             std::string result = std::to_string(src) + " -> " + std::to_string(dst) + " [pos=\"e,";
             for (const auto & [x, y] : edgePos) {
                 result += std::to_string(x) + "," + std::to_string(y) + " ";
@@ -305,7 +308,6 @@
         "    layout=nop2;\n\n"
         "  node [\n"
         "    shape=box,\n"
-        "    style=\"rounded\",\n"
         "    width=6,\n"
         "  ];\n\n"
         "  edge [\n"
