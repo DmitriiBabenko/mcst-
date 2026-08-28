@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <map>
 #include <numeric>
+#include <unordered_set>
 #include "Cache.h"
 
     //сортирует множество компонент по невозрастанию
@@ -178,12 +179,64 @@
     }
 
     namespace {
+        std::map<std::pair<std::size_t, std::size_t>, int> evalDirs(const std::vector<std::vector<std::size_t>> & incWays) {
+        std::map<std::pair<std::size_t, std::size_t>, int> directions;
+        std::vector<std::vector<std::size_t>> leftIndent(incWays.size());
+        std::vector<std::vector<std::size_t>> rightIndent(incWays.size());
+        for (std::size_t dst = 0; dst < incWays.size(); ++dst) {
+            if (incWays[dst].size() < 2) {
+                continue;
+            }
+            const std::size_t left = incWays[dst][0];
+            const std::size_t right = incWays[dst][1];
+            const std::pair<std::size_t, std::size_t> fromLeft = {left, dst};
+            const std::pair<std::size_t, std::size_t> fromRight = {right, dst};
+            if (dst - left == 1) {
+                directions[fromLeft] = 0;
+            } else {
+                std::unordered_set<std::size_t> restrictions;
+                for (std::size_t iter = left; iter <= dst; ++iter) {
+                    for (const auto & indentIter : leftIndent[iter]) {
+                        restrictions.insert(indentIter); 
+                    } 
+                }
+                std::size_t var = 1;
+                while (restrictions.find(var) != restrictions.end()) {
+                    ++var;
+                }
+                directions[fromLeft] = -var;
+                for (std::size_t iter = left; iter <= dst; ++iter) {
+                    leftIndent[iter].push_back(var);
+                }
+            }
+
+            if (dst - right == 1) {
+                directions[fromRight] = 0;
+            } else {
+                std::unordered_set<std::size_t> restrictions;
+                for (std::size_t iter = right; iter <= dst; ++iter) {
+                    for (const auto & indentIter : rightIndent[iter]) {
+                        restrictions.insert(indentIter); 
+                    } 
+                }
+                std::size_t var = 1;
+                while (restrictions.find(var) != restrictions.end()) {
+                    ++var;
+                }
+                directions[fromRight] = var;
+                for (std::size_t iter = right; iter <= dst; ++iter) {
+                    rightIndent[iter].push_back(var);
+                }
+            }
+        }
+        return directions;
+    }
         std::string formatFloat(float v) {
             std::ostringstream oss;
             oss << std::setprecision(9) << v;
             return oss.str();
         }
-        std::string nodeToDot(std::size_t idx, const Ops & op, const std::optional<float> & value, const std::optional<std::size_t> & reg) {
+        std::string nodeToDot(std::size_t idx, const Ops & op, const std::optional<float> & value, const std::optional<std::size_t> & reg, const std::pair<std::size_t, std::size_t> & x_y) {
             std::string line = " " + std::to_string(idx) + " [label=\"" + std::to_string(idx) + ": " + toStr(op);
             if (value) {
                 line += " = " + formatFloat(*value) + ";";
@@ -191,47 +244,72 @@
             if (reg) {
                 line += "Reg = " + std::to_string(*reg);
             }
-            line += "\"];\n";
+            const std::string x = std::to_string(x_y.first);
+            const std::string y = std::to_string(x_y.second);
+            line += "\", pos=\"" + std::to_string(1000) + "," + y + "\"];\n";
             return line;
         }
 
-        std::string edgeToDot(std::size_t src, std::size_t dst) {
-            return " " + std::to_string(src) + " -> " + std::to_string(dst) + ";\n";
+        std::string edgeToDot(std::size_t src, std::size_t dst, std::map<std::pair<std::size_t, std::size_t>, int> & directions, const std::vector<std::pair<std::size_t, std::size_t>> & coords) {
+            std::vector<std::pair<std::size_t, std::size_t>> edgePos;
+            int way = 0;
+            if (directions[{src, dst}] > 0) {
+                way = 216;
+            } else if (directions[{src, dst}] < 0) {
+                way = -216;
+            }
+            edgePos.push_back({coords[dst].first + way, coords[dst].second});
+            edgePos.push_back({coords[src].first + way, coords[src].second});
+            edgePos.push_back({coords[src].first + way + directions[{src, dst}] * 10, coords[src].second});
+            const std::size_t delta = (coords[src].second - coords[dst].second) / 6;
+            for (std::size_t idx = 0; idx <= 6; ++idx) {
+                edgePos.push_back({coords[src].first + way + directions[{src, dst}] * 10, coords[src].second - delta * idx});
+            }
+            edgePos.push_back({coords[dst].first + way + directions[{src, dst}], coords[dst].second});
+            std::string result = std::to_string(src) + " -> " + std::to_string(dst) + " [pos=\"e,";
+            for (const auto & [x, y] : edgePos) {
+                result += std::to_string(x) + "," + std::to_string(y) + " ";
+            }
+            result += "\"];\n";
+            return result;
         }
     }
 
     const std::string Graph::toDot() const {
-        std::string nodes = " 0";
-        for (std::size_t idx = 1; idx < _ops.size(); ++idx) {
-            nodes += (" -> " + std::to_string(idx));
+        std::map<std::pair<std::size_t, std::size_t>, int> directions = evalDirs(incWays());
+
+        const std::size_t width = 2000;
+        const std::size_t center = width / 2;
+
+        std::vector<std::pair<std::size_t, std::size_t>> coords(size());
+        for (std::size_t idx = 0; idx < size(); ++idx) {
+            coords[idx].first = center;
+            coords[idx].second = (size() - idx) * 50;
         }
-        nodes += " [style=invis];\n\n";
+        std::string nodes;
         for (std::size_t idx = 0; idx < _ops.size(); ++idx) {
             const std::optional<float> value = hasValues() ? std::optional<float>(_values[idx]) : std::nullopt;
             const std::optional<std::size_t>  regs = hasRegs() ? std::optional<std::size_t>(_regs[idx]) : std::nullopt;
-            nodes += nodeToDot(idx, _ops[idx], value, regs);
+            nodes += nodeToDot(idx, _ops[idx], value, regs, coords[idx]);
         }
-
-        std::string edges = "edge [\nconstraint=false];\n";
+        std::string edges;
         for (std::size_t src = 0; src < _ways.size(); ++src) {
             for (const auto & dst : _ways[src]) {
-                char port = (dst - src > 4) ? 'e' : 'w';
-                edges += edgeToDot(src, dst);
+                edges += edgeToDot(src, dst, directions, coords);
             }
         }
 
         std::string header = 
         "digraph G {\n"
-        "  graph [\n"
-        "    splines=polyline,\n"
-        "    ranksep=0.8,\n"
-        "    nodesep=2.0\n"
-        "  ];\n"
+        "    splines=ortho;\n"
+        "    layout=nop2;\n\n"
         "  node [\n"
         "    shape=box,\n"
         "    style=\"rounded\",\n"
-        "    width=2.2,\n"
-        "    height=0.4\n"
+        "    width=6,\n"
+        "  ];\n\n"
+        "  edge [\n"
+        "    constraint=false\n"
         "  ];\n\n";
     
         return header + nodes + edges + "}\n";
