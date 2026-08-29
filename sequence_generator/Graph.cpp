@@ -262,12 +262,12 @@
             edgePos.push_back({coords[src].first + way, coords[src].second - 18});
             edgePos.push_back({coords[src].first + way, coords[src].second - 18});
             edgePos.push_back({coords[src].first + way, coords[src].second - 18});
-            edgePos.push_back({coords[src].first + way + directions[{src, dst}] * 10, coords[src].second - 18});
-            edgePos.push_back({coords[src].first + way + directions[{src, dst}] * 10, coords[src].second - 18});
-            edgePos.push_back({coords[dst].first + way + directions[{src, dst}] * 10, coords[dst].second + 18});
-            edgePos.push_back({coords[dst].first + way + directions[{src, dst}] * 10, coords[dst].second + 18});
-            edgePos.push_back({coords[dst].first + way + directions[{src, dst}] * 10, coords[dst].second + 18});
-            edgePos.push_back({coords[dst].first + way + directions[{src, dst}] * 10, coords[dst].second + 18});
+            edgePos.push_back({coords[src].first + way + directions[{src, dst}] * 15, coords[src].second - 18});
+            edgePos.push_back({coords[src].first + way + directions[{src, dst}] * 15, coords[src].second - 18});
+            edgePos.push_back({coords[dst].first + way + directions[{src, dst}] * 15, coords[dst].second + 18});
+            edgePos.push_back({coords[dst].first + way + directions[{src, dst}] * 15, coords[dst].second + 18});
+            edgePos.push_back({coords[dst].first + way + directions[{src, dst}] * 15, coords[dst].second + 18});
+            edgePos.push_back({coords[dst].first + way + directions[{src, dst}] * 15, coords[dst].second + 18});
             edgePos.push_back({coords[dst].first + way + way/216, coords[dst].second + 18});
             std::string result = std::to_string(src) + " -> " + std::to_string(dst) + " [pos=\"e,";
             for (const auto & [x, y] : edgePos) {
